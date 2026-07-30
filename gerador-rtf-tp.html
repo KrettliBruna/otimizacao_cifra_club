@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador RTF · Teleprompter Cifra Club</title>
+<style>
+  :root{--ink:#17140f;--paper:#f6f2ea;--panel:#fff;--line:#e3ddd0;--amber:#c8621f;--amber-soft:#f4e6d8;--loc:#c8621f;--acordes:#9a4bb0;--muted:#79715f;--ok:#2f7d4a;--err:#c0392b;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;line-height:1.5;}
+  header{padding:24px 30px 16px;border-bottom:1px solid var(--line);}
+  header h1{margin:0;font-size:1.4rem;letter-spacing:-0.02em;font-weight:700;}
+  header .sub{color:var(--muted);font-size:0.88rem;margin-top:4px;}
+  .wrap{padding:22px 30px 60px;max-width:1080px;margin:0 auto;}
+  .howto{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:9px;padding:14px 18px;margin-bottom:18px;font-size:0.88rem;}
+  .howto b{color:var(--amber);}
+  .howto pre{background:var(--amber-soft);border-radius:6px;padding:8px 12px;margin:8px 0 0;font-size:0.82rem;white-space:pre-wrap;font-family:'Consolas',monospace;}
+  .step-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--amber);font-weight:700;margin-bottom:8px;}
+  textarea.paste{width:100%;min-height:280px;border:1px solid var(--line);border-radius:10px;padding:14px 16px;font-family:'Consolas','SF Mono',monospace;font-size:0.87rem;line-height:1.55;resize:vertical;background:var(--panel);color:var(--ink);}
+  textarea.paste:focus{outline:2px solid var(--amber);border-color:transparent;}
+  .config{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;}
+  .config label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:600;display:block;margin-bottom:5px;}
+  .config select,.config input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:0.88rem;background:var(--panel);color:var(--ink);}
+  .btn{background:var(--amber);color:#fff;border:none;padding:11px 22px;border-radius:8px;font-size:0.94rem;font-weight:600;cursor:pointer;}
+  .btn:hover{background:#a9511a;}
+  .btn.ghost{background:transparent;color:var(--amber);border:1px solid var(--amber);}
+  .btn.ghost:hover{background:var(--amber-soft);}
+  .controls{display:flex;gap:11px;margin-top:14px;flex-wrap:wrap;align-items:center;}
+  .status{border-radius:9px;padding:12px 16px;font-size:0.87rem;margin:16px 0;}
+  .status.ok{background:#eef7f0;border:1px solid #bfe0c9;color:#245c38;}
+  .status.err{background:#fdecea;border:1px solid #f5c6c0;color:#a5281b;}
+  .status.warn{background:#fff8ec;border:1px solid #e6d3a8;color:#6b5320;}
+  .counts{display:flex;gap:9px;flex-wrap:wrap;margin:10px 0;}
+  .chip{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;background:var(--panel);border:1px solid var(--line);font-size:0.83rem;font-weight:600;}
+  .chip .n{background:var(--ink);color:#fff;border-radius:10px;padding:1px 8px;font-size:0.75rem;}
+  .tabs{display:flex;gap:6px;margin:26px 0 0;border-bottom:2px solid var(--ink);}
+  .tab{padding:9px 18px;border:1px solid var(--line);border-bottom:none;border-radius:9px 9px 0 0;background:var(--panel);cursor:pointer;font-weight:600;font-size:0.9rem;color:var(--muted);position:relative;top:1px;}
+  .tab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .panel-tab{display:none;padding-top:18px;}
+  .panel-tab.active{display:block;}
+  .preview{background:#1e1e1e;color:#eee;border-radius:9px;padding:16px 18px;font-size:0.9rem;line-height:1.6;white-space:pre-wrap;max-height:420px;overflow:auto;}
+  .preview .mk{font-weight:700;color:#fff;}
+  .preview .dot{color:#555;}
+  .flux-list{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:14px 16px;font-family:'Consolas','SF Mono',monospace;font-size:0.9rem;white-space:pre-wrap;line-height:1.7;}
+  .copied{color:var(--ok);font-size:0.82rem;font-weight:600;}
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;margin:6px 0 12px;}
+  .section-head h2{margin:0;font-size:1.05rem;}
+  .section-head .meta{color:var(--muted);font-size:0.83rem;}
+</style>
+</head>
+<body>
+<header>
+  <h1>Gerador de RTF · Teleprompter Cifra Club</h1>
+  <div class="sub">Cola o roteiro já organizado por cena → baixa o .rtf → Load no Teleprompter Pro. Tudo no navegador, sem limite de uso.</div>
+</header>
+
+<div class="wrap">
+  <div class="howto">
+    <b>Como escrever:</b> cada cena começa com o rótulo numa linha (LOC 01, ACORDES 01...) e o texto embaixo. Só LOC e ACORDES entram no Teleprompter; outras cenas (TOCA, RITMO, DEDIL, TAB) podem aparecer sem texto, só pra entrar na lista do fluxograma.
+    <pre>LOC 01
+Texto da primeira locução aqui...
+
+ACORDES 01
+Bm  F#7
+Texto da fala dos acordes...
+
+LOC 02
+Texto da segunda locução...</pre>
+  </div>
+
+  <div class="step-label">Colar o roteiro</div>
+  <textarea class="paste" id="input" placeholder="Cole aqui: LOC 01, texto, ACORDES 01, texto..."></textarea>
+
+  <div class="config" style="grid-template-columns:repeat(2,1fr)">
+    <div><label>Nome da aula (define o nome do arquivo)</label><input type="text" id="nomeAula" placeholder="Ex: Aula 2.6. Aplicando os intervalos em melodias"></div>
+    <div><label>Pontos (respiro)</label><input type="number" id="numDots" value="20" min="0" max="60"></div>
+  </div>
+  <div id="nomePreview" style="display:none;margin-top:10px;">
+    <div class="config" style="grid-template-columns:1fr auto;gap:8px;align-items:end;margin-bottom:8px;">
+      <div><label>Nome pro TP (.tpp)</label><input type="text" id="nomeTPOut" readonly></div>
+      <button class="btn ghost" onclick="copiarCampo('nomeTPOut','tpNameOk')">Copiar</button>
+    </div>
+    <span class="copied" id="tpNameOk" style="display:none">✓ copiado</span>
+    <div class="config" style="grid-template-columns:1fr auto;gap:8px;align-items:end;margin-top:8px;">
+      <div><label>Nome pro Fluxo</label><input type="text" id="nomeFluxoOut" readonly></div>
+      <button class="btn ghost" onclick="copiarCampo('nomeFluxoOut','fluxoNameOk')">Copiar</button>
+    </div>
+    <span class="copied" id="fluxoNameOk" style="display:none">✓ copiado</span>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="processar()">Processar roteiro</button>
+    <button class="btn ghost" onclick="carregarExemplo()">Ver exemplo</button>
+    <button class="btn ghost" onclick="limpar()">Limpar</button>
+  </div>
+
+  <div id="status"></div>
+  <div class="counts" id="counts"></div>
+
+  <div id="results" style="display:none">
+    <div class="tabs">
+      <div class="tab active" data-tab="tp" onclick="switchTab('tp')">Teleprompter</div>
+      <div class="tab" data-tab="flux" onclick="switchTab('flux')">Fluxograma</div>
+    </div>
+
+    <div class="panel-tab active" id="tab-tp">
+      <div class="section-head"><h2>Prévia do .rtf</h2><span class="meta" id="tpMeta"></span></div>
+      <div class="preview" id="tpPreview"></div>
+      <div class="controls" style="margin-top:14px">
+        <button class="btn" onclick="baixarRtf()">Baixar .rtf pro Teleprompter</button>
+        <span class="copied" id="rtfOk" style="display:none">✓ baixado</span>
+      </div>
+    </div>
+
+    <div class="panel-tab" id="tab-flux">
+      <div class="section-head"><h2>Lista de cenas</h2><span class="meta" id="fluxMeta"></span></div>
+      <div class="flux-list" id="fluxList"></div>
+      <div class="controls" style="margin-top:12px">
+        <button class="btn" onclick="copiarFlux()">Copiar lista de cenas</button>
+        <span class="copied" id="fluxOk" style="display:none">✓ copiado</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const sceneRe=/^\s*(LOC|TOCA|RITMO|ACORDES?|TAB|DEDIL(?:HADO)?)\s*0*(\d+)?\s*$/i;
+let STATE={ordered:[],flux:[]};
+
+function normLabel(l){
+  const m=l.match(sceneRe);
+  if(!m)return null;
+  let type=m[1].toUpperCase().replace('DEDILHADO','DEDIL');
+  if(type==='ACORDE')type='ACORDES';
+  const num=m[2]?parseInt(m[2],10):null;
+  return {type,num,label:num!=null?`${type} ${String(num).padStart(2,'0')}`:type};
+}
+
+function parse(raw){
+  const lines=raw.split(/\r?\n/);
+  const scenes=[]; // {type,num,label,text:[lines]}
+  let atual=null;
+  lines.forEach(rawLine=>{
+    const l=rawLine.trim();
+    const n=normLabel(l);
+    if(n){
+      atual={...n,text:[]};
+      scenes.push(atual);
+    } else if(atual){
+      atual.text.push(rawLine.trim());
+    }
+  });
+  // limpar blocos de texto: remover linhas vazias do início/fim, colapsar múltiplas vazias em 1
+  scenes.forEach(s=>{
+    while(s.text.length && s.text[0]==='')s.text.shift();
+    while(s.text.length && s.text[s.text.length-1]==='')s.text.pop();
+    const cleaned=[]; let prevEmpty=false;
+    s.text.forEach(t=>{
+      if(t===''){ if(!prevEmpty)cleaned.push(''); prevEmpty=true; }
+      else { cleaned.push(t); prevEmpty=false; }
+    });
+    s.text=cleaned;
+  });
+  return scenes;
+}
+
+function processar(){
+  const raw=document.getElementById('input').value;
+  if(!raw.trim()){ document.getElementById('status').innerHTML='<div class="status err">Cole o roteiro primeiro.</div>'; return; }
+  const scenes=parse(raw);
+  if(!scenes.length){ document.getElementById('status').innerHTML='<div class="status err">Não reconheci nenhuma cena. Confere se o rótulo (ex: LOC 01) está numa linha própria.</div>'; return; }
+
+  const exportaveis=scenes.filter(s=>s.type==='LOC'||s.type==='ACORDES');
+  const semTexto=exportaveis.filter(s=>s.text.join('').trim()==='');
+  const locs=exportaveis.filter(s=>s.type==='LOC');
+  const acs=exportaveis.filter(s=>s.type==='ACORDES');
+  const ordered=locs.concat(acs);
+
+  STATE={ordered,flux:scenes};
+
+  const st=document.getElementById('status');
+  if(semTexto.length){
+    st.innerHTML=`<div class="status warn">⚠ ${semTexto.length} cena(s) sem texto: ${semTexto.map(s=>s.label).join(', ')}. Confere se esqueceu de colar a fala.</div>`;
+  } else {
+    st.innerHTML=`<div class="status ok">✓ ${exportaveis.length} cenas prontas (${locs.length} LOC + ${acs.length} ACORDES).</div>`;
+  }
+
+  const counts={};
+  scenes.forEach(s=>counts[s.type]=(counts[s.type]||0)+1);
+  const c=document.getElementById('counts'); c.innerHTML='';
+  Object.keys(counts).forEach(t=>{
+    c.innerHTML+=`<div class="chip">${t}<span class="n">${counts[t]}</span></div>`;
+  });
+
+  document.getElementById('results').style.display='block';
+  renderPreview();
+  renderFlux();
+}
+
+function renderPreview(){
+  const dots=parseInt(document.getElementById('numDots').value)||0;
+  const pv=document.getElementById('tpPreview');
+  let html='';
+  for(let i=0;i<dots;i++)html+='<span class="dot">.</span>\n';
+  STATE.ordered.forEach(s=>{
+    html+=`<span class="mk">&lt;&gt; ${s.label}</span>\n`;
+    html+=escapeHtml(s.text.join('\n'))+'\n\n';
+  });
+  for(let i=0;i<dots;i++)html+='<span class="dot">.</span>\n';
+  pv.innerHTML=html;
+  document.getElementById('tpMeta').textContent=`${STATE.ordered.length} cenas no arquivo`;
+}
+function renderFlux(){
+  document.getElementById('fluxList').textContent=STATE.flux.map(s=>s.label).join('\n');
+  document.getElementById('fluxMeta').textContent=`${STATE.flux.length} cenas`;
+}
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
+  document.querySelectorAll('.panel-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+}
+
+/* RTF */
+function rtfEscape(s){let out='';for(const ch of s){const c=ch.codePointAt(0);if(ch==='\\'||ch==='{'||ch==='}')out+='\\'+ch;else if(c>127)out+='\\u'+c+'?';else out+=ch;}return out;}
+function buildRtf(){
+  const dots=parseInt(document.getElementById('numDots').value)||0;
+  const par=(t,b)=>'\\pard '+(b?('{\\b '+rtfEscape(t)+'}'):rtfEscape(t))+'\\par\n';
+  let body='';
+  for(let i=0;i<dots;i++)body+=par('.');
+  STATE.ordered.forEach(s=>{
+    body+=par('<> '+s.label,true);
+    if(s.text.length===0)body+=par('');
+    else s.text.forEach(line=>body+=par(line));
+    body+=par('');
+  });
+  for(let i=0;i<dots;i++)body+=par('.');
+  return '{\\rtf1\\ansi\\ansicpg1252\\deff0\n{\\fonttbl{\\f0 Segoe UI;}}\n\\viewkind4\\uc1\n\\f0\\fs28\n'+body+'}';
+}
+/* OPCAO TP: minúsculas, sem acento/cedilha/pontuação, espaços/hífens/pontos extras -> underscore, mantém número da aula no início */
+function slugifyAula(nome){
+  if(!nome||!nome.trim())return 'roteiro';
+  let s=nome.trim();
+  // remove a palavra "Aula" (com ou sem acento/maiúscula), mantém o número que vem depois
+  s=s.replace(/^aula\s+/i,'');
+  // separa um possível número no início (ex: 2.6 ou 2.6.)
+  const m=s.match(/^(\d+(?:\.\d+)*)\.?\s*(.*)$/);
+  let numero='', resto=s;
+  if(m){ numero=m[1]; resto=m[2]; }
+  // normaliza: remove acentos/cedilha
+  resto=resto.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  // minúsculas, troca tudo que não é letra/número por underscore
+  resto=resto.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  return numero ? `${numero}_${resto}` : resto;
+}
+function atualizarNomePreview(){
+  const nome=document.getElementById('nomeAula').value;
+  const slug=slugifyAula(nome);
+  const pv=document.getElementById('nomePreview');
+  if(nome.trim()){
+    pv.style.display='block';
+    document.getElementById('nomeTPOut').value=slug+'.tpp';
+    document.getElementById('nomeFluxoOut').value=nome.trim();
+  } else {
+    pv.style.display='none';
+  }
+}
+document.getElementById('nomeAula').addEventListener('input',atualizarNomePreview);
+
+function copiarCampo(inputId,okId){
+  const el=document.getElementById(inputId);
+  el.select();
+  navigator.clipboard.writeText(el.value).then(()=>flash(okId));
+}
+
+function baixarRtf(){
+  const nome=document.getElementById('nomeAula').value;
+  const slug=slugifyAula(nome);
+  const blob=new Blob([buildRtf()],{type:'application/rtf'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${slug}.rtf`;a.click();
+  flash('rtfOk');
+}
+function copiarFlux(){
+  const items=STATE.flux.map(s=>s.label);
+  const text=items.join('\n');
+  const html='<table><tbody>'+items.map(l=>`<tr><td>${escapeHtml(l)}</td></tr>`).join('')+'</tbody></table>';
+  const okId='fluxOk';
+  if(navigator.clipboard && window.ClipboardItem){
+    const item=new ClipboardItem({
+      'text/plain': new Blob([text],{type:'text/plain'}),
+      'text/html': new Blob([html],{type:'text/html'})
+    });
+    navigator.clipboard.write([item]).then(()=>flash(okId)).catch(()=>{
+      navigator.clipboard.writeText(text).then(()=>flash(okId));
+    });
+  } else {
+    navigator.clipboard.writeText(text).then(()=>flash(okId));
+  }
+}
+function flash(id){const el=document.getElementById(id);el.style.display='inline';setTimeout(()=>el.style.display='none',1600);}
+function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function limpar(){document.getElementById('input').value='';document.getElementById('results').style.display='none';document.getElementById('status').innerHTML='';document.getElementById('counts').innerHTML='';}
+
+function carregarExemplo(){
+  document.getElementById('input').value=`LOC 01
+Hoje é dia de groove! Eu to aqui pra te ensinar Acenda o Farol do síndico, o grande Tim Maia!
+
+Essa música não tem violão, mas aqui eu adaptei o arranjo pro nosso instrumento.
+
+TOCA
+
+ACORDES 01
+Bora lá! Pra introdução você vai precisar desses acordes
+C7M  B7  Em7  Dm7  G7
+
+Deixa eu te apresentar o ritmo!
+
+RITMO 01
+
+LOC 02
+Depois da introdução aparece a primeira parte, então vamo praticar!
+
+ACORDES 02
+A música fica se repetindo, mas você já aprendeu tudo!`;
+  processar();
+}
+</script>
+</body>
+</html>
