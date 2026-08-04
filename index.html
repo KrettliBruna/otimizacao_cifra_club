@@ -5,10 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gerador RTF · Teleprompter Cifra Club</title>
 <style>
-  :root{--ink:#17140f;--paper:#f6f2ea;--panel:#fff;--line:#e3ddd0;--amber:#c8621f;--amber-soft:#f4e6d8;--loc:#c8621f;--acordes:#9a4bb0;--muted:#79715f;--ok:#2f7d4a;--err:#c0392b;}
+  :root{
+    --ink:#17140f;--paper:#f6f2ea;--panel:#fff;--line:#e3ddd0;
+    --amber:#c8621f;--amber-soft:#f4e6d8;--muted:#79715f;--ok:#2f7d4a;--err:#c0392b;
+    --on-ink:#fff;--on-amber:#fff;--amber-hover:#a9511a;
+    --pre-bg:#1e1e1e;--pre-fg:#eee;--pre-mk:#fff;--pre-dot:#555;
+    --ok-bg:#eef7f0;--ok-bd:#bfe0c9;--ok-fg:#245c38;
+    --err-bg:#fdecea;--err-bd:#f5c6c0;--err-fg:#a5281b;
+    --warn-bg:#fff8ec;--warn-bd:#e6d3a8;--warn-fg:#6b5320;
+    color-scheme:light;
+  }
+  :root[data-theme="dark"]{
+    --ink:#ebe5d9;--paper:#141210;--panel:#1d1a16;--line:#332e27;
+    --amber:#e2833d;--amber-soft:#3a2a1c;--muted:#9a9184;--ok:#6dc492;--err:#e57363;
+    --on-ink:#141210;--on-amber:#1a1310;--amber-hover:#f09a58;
+    --pre-bg:#0e0d0b;--pre-fg:#e4dfd5;--pre-mk:#fff;--pre-dot:#4a463f;
+    --ok-bg:#16261c;--ok-bd:#2f4d38;--ok-fg:#8fd3a8;
+    --err-bg:#2b1614;--err-bd:#57302b;--err-fg:#f0a094;
+    --warn-bg:#2a2213;--warn-bd:#4d3f21;--warn-fg:#e0c584;
+    color-scheme:dark;
+  }
+  body,header,.howto,.markbar,textarea.paste,.btn,.mini,.mark,.chip,.tab,.status,.preview{transition:background-color .18s ease,color .18s ease,border-color .18s ease;}
   *{box-sizing:border-box;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;line-height:1.5;}
-  header{padding:24px 30px 16px;border-bottom:1px solid var(--line);}
+  header{padding:24px 30px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:18px;}
+  .theme-toggle{flex-shrink:0;white-space:nowrap;}
   header h1{margin:0;font-size:1.4rem;letter-spacing:-0.02em;font-weight:700;}
   header .sub{color:var(--muted);font-size:0.88rem;margin-top:4px;}
   .wrap{padding:22px 30px 60px;max-width:1080px;margin:0 auto;}
@@ -32,26 +53,26 @@
   .config{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;}
   .config label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:600;display:block;margin-bottom:5px;}
   .config select,.config input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:0.88rem;background:var(--panel);color:var(--ink);}
-  .btn{background:var(--amber);color:#fff;border:none;padding:11px 22px;border-radius:8px;font-size:0.94rem;font-weight:600;cursor:pointer;}
-  .btn:hover{background:#a9511a;}
+  .btn{background:var(--amber);color:var(--on-amber);border:none;padding:11px 22px;border-radius:8px;font-size:0.94rem;font-weight:600;cursor:pointer;}
+  .btn:hover{background:var(--amber-hover);}
   .btn.ghost{background:transparent;color:var(--amber);border:1px solid var(--amber);}
   .btn.ghost:hover{background:var(--amber-soft);}
   .controls{display:flex;gap:11px;margin-top:14px;flex-wrap:wrap;align-items:center;}
   .status{border-radius:9px;padding:12px 16px;font-size:0.87rem;margin:16px 0;}
-  .status.ok{background:#eef7f0;border:1px solid #bfe0c9;color:#245c38;}
-  .status.err{background:#fdecea;border:1px solid #f5c6c0;color:#a5281b;}
-  .status.warn{background:#fff8ec;border:1px solid #e6d3a8;color:#6b5320;}
+  .status.ok{background:var(--ok-bg);border:1px solid var(--ok-bd);color:var(--ok-fg);}
+  .status.err{background:var(--err-bg);border:1px solid var(--err-bd);color:var(--err-fg);}
+  .status.warn{background:var(--warn-bg);border:1px solid var(--warn-bd);color:var(--warn-fg);}
   .counts{display:flex;gap:9px;flex-wrap:wrap;margin:10px 0;}
   .chip{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;background:var(--panel);border:1px solid var(--line);font-size:0.83rem;font-weight:600;}
-  .chip .n{background:var(--ink);color:#fff;border-radius:10px;padding:1px 8px;font-size:0.75rem;}
+  .chip .n{background:var(--ink);color:var(--on-ink);border-radius:10px;padding:1px 8px;font-size:0.75rem;}
   .tabs{display:flex;gap:6px;margin:26px 0 0;border-bottom:2px solid var(--ink);}
   .tab{padding:9px 18px;border:1px solid var(--line);border-bottom:none;border-radius:9px 9px 0 0;background:var(--panel);cursor:pointer;font-weight:600;font-size:0.9rem;color:var(--muted);position:relative;top:1px;}
-  .tab.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .tab.active{background:var(--ink);color:var(--on-ink);border-color:var(--ink);}
   .panel-tab{display:none;padding-top:18px;}
   .panel-tab.active{display:block;}
-  .preview{background:#1e1e1e;color:#eee;border-radius:9px;padding:16px 18px;font-size:0.9rem;line-height:1.6;white-space:pre-wrap;max-height:420px;overflow:auto;}
-  .preview .mk{font-weight:700;color:#fff;}
-  .preview .dot{color:#555;}
+  .preview{background:var(--pre-bg);color:var(--pre-fg);border-radius:9px;padding:16px 18px;font-size:0.9rem;line-height:1.6;white-space:pre-wrap;max-height:420px;overflow:auto;}
+  .preview .mk{font-weight:700;color:var(--pre-mk);}
+  .preview .dot{color:var(--pre-dot);}
   /* tabela do fluxo — espelha o formato colado no documento */
   table.flux-table{border-collapse:collapse;border:1px solid #000;}
   table.flux-table td{font-family:'Courier New',monospace;font-size:11pt;text-align:center;background-color:#efefef;border:1px solid #000;padding:4pt 26pt;color:#000;}
@@ -63,8 +84,11 @@
 </head>
 <body>
 <header>
-  <h1>Gerador de RTF · Teleprompter Cifra Club</h1>
-  <div class="sub">Cola o roteiro já organizado por cena → baixa o .rtf → Load no Teleprompter Pro. Tudo no navegador, sem limite de uso.</div>
+  <div>
+    <h1>Gerador de RTF · Teleprompter Cifra Club</h1>
+    <div class="sub">Monta o roteiro por cena → baixa o .tpp → abre no Teleprompter Pro. Tudo no navegador, sem limite de uso.</div>
+  </div>
+  <button class="mini theme-toggle" id="btnTema" onclick="alternarTema()">🌙 Escuro</button>
 </header>
 
 <div class="wrap">
@@ -106,7 +130,7 @@ Texto da segunda locução...</pre>
   </div>
   <div id="nomePreview" style="display:none;margin-top:10px;">
     <div class="config" style="grid-template-columns:1fr auto;gap:8px;align-items:end;margin-bottom:8px;">
-      <div><label>Nome pro TP (.tpp)</label><input type="text" id="nomeTPOut" readonly></div>
+      <div><label>Nome pro TP e pro Fluxo</label><input type="text" id="nomeTPOut" readonly></div>
       <button class="btn ghost" onclick="copiarCampo('nomeTPOut','tpNameOk')">Copiar</button>
     </div>
     <span class="copied" id="tpNameOk" style="display:none">✓ copiado</span>
@@ -133,10 +157,12 @@ Texto da segunda locução...</pre>
     </div>
 
     <div class="panel-tab active" id="tab-tp">
-      <div class="section-head"><h2>Prévia do .rtf</h2><span class="meta" id="tpMeta"></span></div>
+      <div class="section-head"><h2>Prévia do arquivo</h2><span class="meta" id="tpMeta"></span></div>
       <div class="preview" id="tpPreview"></div>
       <div class="controls" style="margin-top:14px">
-        <button class="btn" onclick="baixarRtf()">Baixar .rtf pro Teleprompter</button>
+        <button class="btn" onclick="baixarArquivo('tpp')">Baixar .tpp pro Teleprompter</button>
+        <span class="copied" id="tppOk" style="display:none">✓ baixado</span>
+        <button class="btn ghost" onclick="baixarArquivo('rtf')">Baixar como .rtf</button>
         <span class="copied" id="rtfOk" style="display:none">✓ baixado</span>
       </div>
     </div>
@@ -154,6 +180,25 @@ Texto da segunda locução...</pre>
 </div>
 
 <script>
+/* ---------- tema claro / escuro ---------- */
+function aplicarTema(t){
+  document.documentElement.setAttribute('data-theme',t);
+  const b=document.getElementById('btnTema');
+  if(b)b.textContent = t==='dark' ? '☀ Claro' : '🌙 Escuro';
+  try{localStorage.setItem('tema-gerador-tp',t);}catch(e){}
+}
+function alternarTema(){
+  aplicarTema(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
+}
+(function(){
+  let t=null;
+  try{t=localStorage.getItem('tema-gerador-tp');}catch(e){}
+  if(t!=='dark'&&t!=='light'){
+    t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
+  }
+  aplicarTema(t);
+})();
+
 /* ordem oficial do fluxograma */
 const ORDEM=['LOC','ACORDES','RITMO','DEDIL','TAB','TOCA','TOCA SOLO'];
 const sceneRe=/^\s*(TOCA\s+SOLO|LOC|TOCA|RITMO|ACORDES?|TAB|DEDIL(?:HADO)?)\s*0*(\d+)?\s*$/i;
@@ -408,7 +453,7 @@ function atualizarNomePreview(){
   const pv=document.getElementById('nomePreview');
   if(nome.trim()){
     pv.style.display='block';
-    document.getElementById('nomeTPOut').value=slug+'.tpp';
+    document.getElementById('nomeTPOut').value=slug;
     document.getElementById('nomeFluxoOut').value=nome.trim();
   } else {
     pv.style.display='none';
@@ -422,12 +467,17 @@ function copiarCampo(inputId,okId){
   navigator.clipboard.writeText(el.value).then(()=>flash(okId));
 }
 
-function baixarRtf(){
+/* mesmo conteudo (RTF) — muda so a terminacao do nome do arquivo */
+function baixarArquivo(ext){
   const nome=document.getElementById('nomeAula').value;
   const slug=slugifyAula(nome);
-  const blob=new Blob([buildRtf()],{type:'application/rtf'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${slug}.rtf`;a.click();
-  flash('rtfOk');
+  const blob=new Blob([buildRtf()],{type:'application/octet-stream'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`${slug}.${ext}`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  flash(ext==='tpp'?'tppOk':'rtfOk');
 }
 /* copia a lista já formatada: #efefef, Courier New 11, borda em negrito */
 function copiarFlux(){

@@ -2,7 +2,7 @@
 
 Ferramenta de pré-produção que transforma o roteiro da aula em dois entregáveis:
 
-- o arquivo `.rtf` que entra no **Teleprompter Pro** (botão **Load**)
+- o arquivo `.tpp` que abre direto no **Teleprompter Pro**
 - a **lista de cenas** já formatada para colar no fluxograma
 
 É um arquivo HTML único. Não instala nada, não precisa de internet: dois cliques e abre no navegador.
@@ -20,7 +20,7 @@ Ferramenta de pré-produção que transforma o roteiro da aula em dois entregáv
 2. Monte o roteiro no campo de texto.
 3. Preencha o **nome da aula** — ele define o nome do arquivo gerado.
 4. Clique em **Processar roteiro**.
-5. Na aba **Teleprompter**, confira a prévia e clique em **Baixar .rtf**.
+5. Na aba **Teleprompter**, confira a prévia e clique em **Baixar .tpp**.
 6. Na aba **Fluxograma**, clique em **Copiar lista de cenas** e cole no documento.
 
 ## Montando o roteiro
@@ -53,7 +53,7 @@ Clique e o rótulo entra já numerado, na posição do cursor. A numeração con
 
 ## O que vai para cada lugar
 
-**Teleprompter (.rtf)** — só as cenas **LOC** e **ACORDES**, que são as que têm fala. Saem com as LOCs primeiro e as ACORDES depois, cada rótulo marcado como `<> LOC 01` para o Teleprompter reconhecer. Os pontinhos no começo e no fim são o respiro de rolagem; a quantidade é ajustável no campo **Pontos**.
+**Teleprompter (.tpp)** — só as cenas **LOC** e **ACORDES**, que são as que têm fala. Saem com as LOCs primeiro e as ACORDES depois, cada rótulo marcado como `<> LOC 01` para o Teleprompter reconhecer. Os pontinhos no começo e no fim são o respiro de rolagem; a quantidade é ajustável no campo **Pontos**.
 
 **Fluxograma** — todas as cenas, inclusive as que não têm texto. A lista sai sempre nesta ordem:
 
@@ -69,10 +69,10 @@ A cópia já vai formatada para o documento: fundo `#efefef`, fonte Courier New 
 
 Preenchendo o **nome da aula**, a ferramenta monta os dois nomes do padrão de pré-produção:
 
-- **Nome pro TP** — minúsculo, sem acento nem pontuação, com underscore no lugar dos espaços, mantendo o número da aula na frente. `Aula 2.6. Aplicando os intervalos` vira `2.6_aplicando_os_intervalos.tpp`.
+- **Nome pro TP e pro Fluxo** — minúsculo, sem acento nem pontuação, com underscore no lugar dos espaços, mantendo o número da aula na frente. `Aula 2.6. Aplicando os intervalos` vira `2.6_aplicando_os_intervalos`.
 - **Nome pro Fluxo** — o nome da aula como você escreveu.
 
-Cada um tem um botão de copiar ao lado. O `.rtf` baixado usa o mesmo padrão do nome do TP.
+Cada um tem um botão de copiar ao lado. O arquivo baixado usa esse mesmo nome, com a terminação `.tpp` acrescentada. O botão **Baixar como .rtf** gera o mesmo conteúdo com a terminação antiga, caso precise.
 
 ## Levando para outro computador
 
