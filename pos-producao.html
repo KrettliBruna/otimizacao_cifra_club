@@ -100,6 +100,7 @@
   .folderbar{display:flex;gap:11px;align-items:center;flex-wrap:wrap;margin:16px 0;}
   .folder-name{font-family:'Consolas',monospace;font-size:0.85rem;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:7px 12px;}
   .folder-name.ativa{color:var(--ok);border-color:var(--ok);}
+  .zbtn{margin-top:9px;}
   .chk{display:flex;align-items:center;gap:8px;font-size:0.86rem;color:var(--muted);margin-top:4px;cursor:pointer;}
 </style>
 </head>
@@ -116,7 +117,6 @@
 
   <div class="tabs main">
     <div class="mtab active" data-main="tp" onclick="switchMain('tp')">Roteiro &amp; TP</div>
-    <div class="mtab" data-main="xml" onclick="switchMain('xml')">XML &rarr; Premiere</div>
     <div class="mtab" data-main="pasta" onclick="switchMain('pasta')">Pasta da aula</div>
   </div>
 
@@ -210,50 +210,40 @@ Texto da segunda locução...</pre>
   </div>
 </div><!-- fim main-tp -->
 
-<div class="main-tab" id="main-xml">
-  <div class="howto">
-    <b>O que ele faz:</b> reescreve o XML do DaVinci para o Premiere procurar os arquivos pelo nome que está na timeline (LOC…, RITMO…, TOCA…). Também zera o timecode da sequência e corrige motion, anamorphic e field dominance.
-  </div>
-  <div class="dropzone" id="dzXmlSolto">
-    <div class="dz-icon">✂</div>
-    <div class="dz-title">Arraste o XML do DaVinci aqui</div>
-    <div class="dz-sub">ou clique para escolher o arquivo</div>
-  </div>
-  <label class="chk"><input type="checkbox" id="xmlNaPasta"> Em vez de baixar, salvar direto em <code>Premiere/</code> da pasta da aula</label>
-  <div id="xmlStatus"></div>
-</div>
-
 <div class="main-tab" id="main-pasta">
   <div class="howto">
-    <b>Como funciona:</b> escolha a pasta que o DaVinci criou (a do nome da timeline). A página cria as subpastas que faltam e guarda cada arquivo no lugar certo. Ela só enxerga a pasta que você escolher — nada fora dela.
+    <b>Como funciona:</b> escolha primeiro a pasta que o DaVinci criou (a do nome da timeline). Depois arraste cada coisa para o quadro correspondente — a conversão do XML acontece aqui mesmo. A página só enxerga a pasta que você escolher.
   </div>
   <div class="folderbar">
-    <button class="btn" onclick="escolherPastaAula()">Escolher pasta da aula</button>
-    <button class="btn ghost" onclick="criarSubpastas()">Criar Sonar e Premiere</button>
+    <button class="btn" onclick="escolherPastaAula()">1 · Escolher pasta da aula</button>
+    <button class="btn ghost" onclick="importarAudioExport(false)">Procurar áudio export</button>
+    <button class="btn ghost" onclick="limparPasta()">Limpar</button>
     <span class="folder-name" id="pastaAulaNome">nenhuma pasta escolhida</span>
   </div>
   <div id="pastaStatus"></div>
 
+  <div class="step-label" style="margin-top:18px">2 · Arraste os arquivos</div>
   <div class="zones">
     <div class="dropzone small" id="dzXml">
       <div class="dz-title">XML do DaVinci</div>
-      <div class="dz-sub">converte e salva em <code>Premiere/</code></div>
+      <div class="dz-sub">converte e salva em <code>premiere/</code></div>
     </div>
     <div class="dropzone small" id="dzSonar">
       <div class="dz-title">Projeto de áudio</div>
-      <div class="dz-sub">salva em <code>Sonar/</code></div>
-    </div>
-    <div class="dropzone small" id="dzExport">
-      <div class="dz-title">Áudios exportados</div>
-      <div class="dz-sub">salva em <code>Assets/Sonar/</code></div>
+      <div class="dz-sub">o conteúdo da pasta vai para <code>sonar/</code>, sem a pasta de fora</div>
+      <button class="mini zbtn" onclick="event.stopPropagation();origemSonar()">Escolher pasta…</button>
     </div>
     <div class="dropzone small" id="dzFluxo">
       <div class="dz-title">Fluxo (iCloud)</div>
       <div class="dz-sub">renomeia para <code>fluxo</code> e salva na raiz</div>
     </div>
   </div>
+
+  <div class="howto" style="margin-top:20px">
+    <b>O que a conversão do XML faz:</b> reescreve o arquivo para o Premiere procurar os vídeos pelo nome que está na timeline do DaVinci (LOC…, RITMO…, TOCA…). Também zera o timecode da sequência e corrige motion, anamorphic e field dominance. O arquivo sai com <code>_corrigido</code> no fim do nome.
+  </div>
 </div>
-</div>
+
 
 <script>
 /* ---------- tema claro / escuro ---------- */
@@ -716,6 +706,16 @@ async function guardar(chave,valor){
     });
   }catch(e){}
 }
+async function apagarGuardado(chave){
+  try{
+    const db=await idbAbrir();
+    await new Promise(res=>{
+      const tx=db.transaction('h','readwrite');
+      tx.objectStore('h').delete(chave);
+      tx.oncomplete=res; tx.onerror=res;
+    });
+  }catch(e){}
+}
 async function recuperar(chave){
   try{
     const db=await idbAbrir();
@@ -736,118 +736,185 @@ async function temPermissao(h,pedir){
   }catch(e){}
   return false;
 }
-function avisoSemSuporte(alvo){
-  msg(alvo,'err','Este recurso precisa do Chrome ou Edge, e a p\u00e1gina precisa estar aberta pelo link do site (n\u00e3o pelo arquivo solto).');
-}
 function msg(id,tipo,texto){
   const el=document.getElementById(id);
   if(el)el.innerHTML='<div class="status '+tipo+'">'+escapeHtml(texto)+'</div>';
+}
+function explicarErro(e){
+  const n=e&&e.name;
+  if(n==='NotFoundError')return 'N\u00e3o consegui ler a origem. Isso costuma acontecer ao arrastar de uma pasta da rede ou do iCloud: use o bot\u00e3o "Escolher pasta\u2026" da pr\u00f3pria \u00e1rea, ou copie o item para o PC antes.';
+  if(n==='NotAllowedError')return 'Permiss\u00e3o negada. Clique em "Escolher pasta da aula" para liberar o acesso.';
+  if(n==='SecurityError')return 'O navegador bloqueou o acesso. Confira se a p\u00e1gina foi aberta pelo link do site, no Chrome ou Edge.';
+  return 'Erro: '+((e&&e.message)?e.message:e);
 }
 function marcarPastaAula(){
   const el=document.getElementById('pastaAulaNome');
   if(pastaAula){ el.textContent=pastaAula.name; el.classList.add('ativa'); }
   else { el.textContent='nenhuma pasta escolhida'; el.classList.remove('ativa'); }
 }
-
 async function escolherPastaAula(){
-  if(!TEM_FS){ avisoSemSuporte('pastaStatus'); return; }
+  if(!TEM_FS){ msg('pastaStatus','err','Este recurso precisa do Chrome ou Edge, com a p\u00e1gina aberta pelo link do site.'); return; }
   try{
     pastaAula=await window.showDirectoryPicker({mode:'readwrite',id:'pastaAula'});
     await guardar('pastaAula',pastaAula);
     marcarPastaAula();
     msg('pastaStatus','ok','Pasta conectada: '+pastaAula.name);
-  }catch(e){ if(e.name!=='AbortError')msg('pastaStatus','err','N\u00e3o consegui abrir a pasta: '+e.message); }
+  }catch(e){ if(e.name!=='AbortError')msg('pastaStatus','err',explicarErro(e)); }
 }
-async function garantirPastaAula(){
-  if(!TEM_FS){ avisoSemSuporte('pastaStatus'); return false; }
-  if(!pastaAula){ msg('pastaStatus','warn','Escolha a pasta da aula primeiro.'); return false; }
-  if(!(await temPermissao(pastaAula,true))){ msg('pastaStatus','warn','Permiss\u00e3o da pasta n\u00e3o liberada. Clique em "Escolher pasta da aula" de novo.'); return false; }
+async function garantirPastaAula(statusId){
+  statusId=statusId||'pastaStatus';
+  if(!TEM_FS){ msg(statusId,'err','Este recurso precisa do Chrome ou Edge, com a p\u00e1gina aberta pelo link do site.'); return false; }
+  if(!pastaAula){ msg(statusId,'warn','Escolha a pasta da aula primeiro, na aba "Pasta da aula".'); return false; }
+  if(!(await temPermissao(pastaAula,true))){ msg(statusId,'warn','Permiss\u00e3o da pasta n\u00e3o liberada. Clique em "Escolher pasta da aula" de novo.'); return false; }
   return true;
 }
-async function criarSubpastas(){
-  if(!(await garantirPastaAula()))return;
-  try{
-    await pastaAula.getDirectoryHandle('Sonar',{create:true});
-    await pastaAula.getDirectoryHandle('Premiere',{create:true});
-    msg('pastaStatus','ok','Subpastas Sonar e Premiere prontas dentro de '+pastaAula.name+'.');
-  }catch(e){ msg('pastaStatus','err','Erro ao criar as subpastas: '+e.message); }
-}
-async function escrever(raiz,caminho,nome,conteudo){
-  let dir=raiz;
+async function subpasta(caminho){
+  let dir=pastaAula;
   for(const parte of caminho){ dir=await dir.getDirectoryHandle(parte,{create:true}); }
+  return dir;
+}
+async function gravar(dir,nome,conteudo){
   const fh=await dir.getFileHandle(nome,{create:true});
   const w=await fh.createWritable();
   await w.write(conteudo);
   await w.close();
+  /* confere se chegou inteiro */
+  if(conteudo && typeof conteudo.size==='number'){
+    const escrito=await fh.getFile();
+    if(escrito.size!==conteudo.size){
+      throw new Error('"'+nome+'" foi copiado incompleto ('+escrito.size+' de '+conteudo.size+' bytes). Repita a c\u00f3pia deste item.');
+    }
+  }
+}
+/* copia so o conteudo da pasta arrastada, ignorando o nome dela */
+async function copiarConteudo(handle,destino){
+  if(handle.kind==='file'){ await gravar(destino,handle.name,await handle.getFile()); return 1; }
+  let n=0;
+  for await (const filho of handle.values()){ n+=await copiarEntrada(filho,destino); }
+  return n;
+}
+/* varre tudo e joga so os arquivos, soltos, no destino */
+async function copiarSoArquivos(handle,destino){
+  if(handle.kind==='file'){ await gravar(destino,handle.name,await handle.getFile()); return 1; }
+  let n=0;
+  for await (const filho of handle.values()){ n+=await copiarSoArquivos(filho,destino); }
+  return n;
+}
+/* copia recursiva: aceita arquivo ou pasta inteira */
+async function copiarEntrada(handle,destino){
+  if(handle.kind==='file'){
+    await gravar(destino,handle.name,await handle.getFile());
+    return 1;
+  }
+  const nova=await destino.getDirectoryHandle(handle.name,{create:true});
+  let n=0;
+  for await (const filho of handle.values()){ n+=await copiarEntrada(filho,nova); }
+  return n;
+}
+
+/* ================= achar a pasta de audio export sozinho ================= */
+function normalizaNome(t){ return t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+async function acharPastas(dir,teste,caminho,achados,prof){
+  if(prof>6)return;
+  for await (const filho of dir.values()){
+    if(filho.kind!=='directory')continue;
+    const nome=normalizaNome(filho.name);
+    if(prof===0 && (nome==='assets'||nome==='premiere'))continue;
+    const trilha=caminho.concat(filho.name);
+    if(teste(nome)) achados.push({handle:filho,caminho:trilha.join('/')});
+    else await acharPastas(filho,teste,trilha,achados,prof+1);
+  }
+}
+async function importarAudioExport(silencioso,prefixo){
+  if(!(await garantirPastaAula()))return;
+  try{
+    let base=pastaAula, ondeBusquei='a pasta da aula';
+    try{ base=await pastaAula.getDirectoryHandle('sonar'); ondeBusquei='sonar/'; }catch(e){}
+    let achados=[];
+    await acharPastas(base,n=>n.includes('export')&&n.includes('audio'),[],achados,0);
+    if(!achados.length) await acharPastas(base,n=>n.includes('export'),[],achados,0);
+    if(!achados.length){
+      if(!silencioso) msg('pastaStatus','warn','N\u00e3o achei nenhuma pasta com "export" no nome dentro de '+ondeBusquei+'. Arraste a pasta no quadro "\u00c1udios exportados".');
+      return;
+    }
+    const destino=await subpasta(['Assets']);
+    let n=0;
+    for(const a of achados){ n+=await copiarSoArquivos(a.handle,destino); }
+    const nomes=achados.map(a=>a.caminho).join(', ');
+    msg('pastaStatus','ok',(prefixo?prefixo+' ':'')+n+(n===1?' arquivo de ':' arquivos de ')+nomes+' salvo(s) em Assets/.');
+  }catch(e){ msg('pastaStatus','err',explicarErro(e)); }
 }
 
 /* ================= zonas de arrastar ================= */
-function ligarZona(idZona,aoReceber,aceita){
+function ligarZona(idZona,destino,rotulo,opts){
+  opts=opts||{};
   const dz=document.getElementById(idZona);
   if(!dz)return;
   dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('hover');});
   dz.addEventListener('dragleave',()=>dz.classList.remove('hover'));
   dz.addEventListener('drop',e=>{
     e.preventDefault();dz.classList.remove('hover');
-    if(e.dataTransfer.files.length)aoReceber(Array.from(e.dataTransfer.files));
+    const arquivos=Array.from(e.dataTransfer.files||[]);
+    const itens=Array.from(e.dataTransfer.items||[]).filter(i=>i.kind==='file');
+    if(itens.length && typeof itens[0].getAsFileSystemHandle==='function'){
+      Promise.all(itens.map(i=>i.getAsFileSystemHandle().catch(()=>null)))
+        .then(hs=>processarArquivos(hs.filter(Boolean),arquivos,destino,rotulo,opts));
+    } else {
+      processarArquivos(null,arquivos,destino,rotulo,opts);
+    }
   });
-  dz.addEventListener('click',()=>{
+  dz.addEventListener('click',ev=>{
+    if(ev.target.closest('.zbtn'))return;
     const inp=document.createElement('input');
     inp.type='file'; inp.multiple=true;
-    if(aceita)inp.accept=aceita;
-    inp.onchange=e=>{ if(e.target.files.length)aoReceber(Array.from(e.target.files)); };
+    if(opts.aceita)inp.accept=opts.aceita;
+    inp.onchange=e=>{ if(e.target.files.length)processarArquivos(null,Array.from(e.target.files),destino,rotulo,opts); };
     inp.click();
   });
 }
-
-async function copiarPara(arquivos,caminho,rotulo,renomear){
-  if(!(await garantirPastaAula()))return;
+async function escolherOrigemPasta(destino,rotulo,opts){
+  opts=opts||{};
+  if(!TEM_FS){ msg(opts.statusId||'pastaStatus','err','Este recurso precisa do Chrome ou Edge.'); return; }
   try{
-    for(const f of arquivos){
-      let nome=f.name;
-      if(renomear){
-        const i=nome.lastIndexOf('.');
-        nome=renomear+(i>0?nome.slice(i):'');
+    const origem=await window.showDirectoryPicker({mode:'read'});
+    processarArquivos([origem],null,destino,rotulo,opts);
+  }catch(e){ if(e.name!=='AbortError')msg(opts.statusId||'pastaStatus','err',explicarErro(e)); }
+}
+
+async function processarArquivos(handles,arquivos,destino,rotulo,opts){
+  const sid=opts.statusId||'pastaStatus';
+  if(!(await garantirPastaAula(sid)))return;
+  try{
+    const dir=await subpasta(destino);
+    let n=0;
+    const lista = (handles&&handles.length) ? handles : (arquivos||[]);
+    for(const item of lista){
+      const ehHandle = item && item.kind!==undefined;
+      if(opts.xml){
+        const f = ehHandle ? await item.getFile() : item;
+        if(!/\.xml$/i.test(f.name))continue;
+        const saida=converterXml(await f.text());
+        await gravar(dir,nomeConvertido(f.name),new Blob([saida],{type:'application/xml'}));
+        n++;
+      } else if(opts.renomear){
+        const f = ehHandle ? await item.getFile() : item;
+        const i=f.name.lastIndexOf('.');
+        await gravar(dir,opts.renomear+(i>0?f.name.slice(i):''),f);
+        n++;
+      } else if(ehHandle){
+        if(opts.soArquivos)      n+=await copiarSoArquivos(item,dir);
+        else if(opts.conteudo)   n+=await copiarConteudo(item,dir);
+        else                     n+=await copiarEntrada(item,dir);
+      } else {
+        await gravar(dir,item.name,item);
+        n++;
       }
-      await escrever(pastaAula,caminho,nome,f);
     }
-    msg('pastaStatus','ok',arquivos.length+' arquivo(s) em '+rotulo);
-  }catch(e){ msg('pastaStatus','err','Erro ao copiar: '+e.message); }
-}
-
-async function xmlParaPremiere(arquivos){
-  if(!(await garantirPastaAula()))return;
-  try{
-    for(const f of arquivos){
-      if(!/\.xml$/i.test(f.name))continue;
-      const saida=converterXml(await f.text());
-      await escrever(pastaAula,['Premiere'],nomeConvertido(f.name),new Blob([saida],{type:'application/xml'}));
-    }
-    msg('pastaStatus','ok','XML convertido e salvo em Premiere/.');
-  }catch(e){ msg('pastaStatus','err','Erro na convers\u00e3o: '+e.message); }
-}
-
-async function xmlSolto(arquivos){
-  const f=arquivos.find(a=>/\.xml$/i.test(a.name));
-  if(!f){ msg('xmlStatus','err','Isso n\u00e3o parece um arquivo .xml.'); return; }
-  let saida;
-  try{ saida=converterXml(await f.text()); }
-  catch(e){ msg('xmlStatus','err','Erro na convers\u00e3o: '+e.message); return; }
-
-  if(document.getElementById('xmlNaPasta').checked){
-    if(!(await garantirPastaAula())){ msg('xmlStatus','warn','Converti, mas nenhuma pasta est\u00e1 conectada. V\u00e1 na aba "Pasta da aula".'); return; }
-    try{
-      await escrever(pastaAula,['Premiere'],nomeConvertido(f.name),new Blob([saida],{type:'application/xml'}));
-      msg('xmlStatus','ok','Salvo em '+pastaAula.name+'/Premiere/'+nomeConvertido(f.name));
-    }catch(e){ msg('xmlStatus','err','Erro ao salvar: '+e.message); }
-  } else {
-    const url=URL.createObjectURL(new Blob([saida],{type:'application/xml'}));
-    const a=document.createElement('a');
-    a.href=url; a.download=nomeConvertido(f.name);
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    setTimeout(()=>URL.revokeObjectURL(url),2000);
-    msg('xmlStatus','ok','Convertido: '+nomeConvertido(f.name));
-  }
+    if(!n){ msg(sid,'warn','Nada foi copiado. Confira se o arquivo \u00e9 do tipo esperado.'); return; }
+    const resumo=n+(n===1?' item salvo em ':' itens salvos em ')+rotulo+'.';
+    msg(sid,'ok',resumo);
+    if(opts.depois) await opts.depois(true,resumo);
+  }catch(e){ msg(sid,'err',explicarErro(e)); }
 }
 
 /* salvar o .tpp direto numa pasta fixa */
@@ -859,23 +926,36 @@ async function salvarTpNaPasta(){
       await guardar('pastaTP',pastaTP);
     }
     const slug=slugifyAula(document.getElementById('nomeAula').value);
-    await escrever(pastaTP,[],slug+'.tpp',new Blob([buildRtf()],{type:'application/octet-stream'}));
+    await gravar(pastaTP,slug+'.tpp',new Blob([buildRtf()],{type:'application/octet-stream'}));
     flash('tpPastaOk');
   }catch(e){ if(e.name!=='AbortError')alert('N\u00e3o consegui salvar: '+e.message); }
 }
 
+/* ================= limpar por aba ================= */
+async function limparPasta(){
+  pastaAula=null;
+  await apagarGuardado('pastaAula');
+  marcarPastaAula();
+  document.getElementById('pastaStatus').innerHTML='';
+}
+
+/* ================= atalhos das zonas ================= */
+const origemSonar =()=>escolherOrigemPasta(['sonar'],'sonar/',{conteudo:true});
+
 /* ================= inicializacao ================= */
-ligarZona('dzXmlSolto',xmlSolto,'.xml');
-ligarZona('dzXml',xmlParaPremiere,'.xml');
-ligarZona('dzSonar',a=>copiarPara(a,['Sonar'],'Sonar/'));
-ligarZona('dzExport',a=>copiarPara(a,['Assets','Sonar'],'Assets/Sonar/'));
-ligarZona('dzFluxo',a=>copiarPara(a,[],'na raiz da pasta, como "fluxo"','fluxo'));
+ligarZona('dzXml',['premiere'],'premiere/',{xml:true,aceita:'.xml'});
+ligarZona('dzSonar',['sonar'],'sonar/',{conteudo:true,depois:importarAudioExport});
+ligarZona('dzFluxo',[],'na raiz da pasta, como "fluxo"',{renomear:'fluxo'});
 
 (async function(){
   if(!TEM_FS)return;
   const a=await recuperar('pastaAula');
-  if(a && await temPermissao(a,false)){ pastaAula=a; marcarPastaAula(); }
-  else if(a){ pastaAula=a; marcarPastaAula(); msg('pastaStatus','warn','Pasta lembrada: '+a.name+'. Clique em "Escolher pasta da aula" para liberar o acesso nesta sess\u00e3o.'); }
+  if(a){
+    pastaAula=a; marcarPastaAula();
+    if(!(await temPermissao(a,false))){
+      msg('pastaStatus','warn','Pasta lembrada: '+a.name+'. Clique em "Escolher pasta da aula" para liberar o acesso nesta sess\u00e3o.');
+    }
+  }
   const t=await recuperar('pastaTP');
   if(t)pastaTP=t;
 })();
