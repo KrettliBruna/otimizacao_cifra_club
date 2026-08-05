@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pré + Pós · Cifra Club (teste)</title>
+<style>
+  :root{
+    --ink:#17140f;--paper:#f6f2ea;--panel:#fff;--line:#e3ddd0;
+    --amber:#c8621f;--amber-soft:#f4e6d8;--muted:#79715f;--ok:#2f7d4a;--err:#c0392b;
+    --on-ink:#fff;--on-amber:#fff;--amber-hover:#a9511a;
+    --pre-bg:#1e1e1e;--pre-fg:#eee;--pre-mk:#fff;--pre-dot:#555;
+    --ok-bg:#eef7f0;--ok-bd:#bfe0c9;--ok-fg:#245c38;
+    --err-bg:#fdecea;--err-bd:#f5c6c0;--err-fg:#a5281b;
+    --warn-bg:#fff8ec;--warn-bd:#e6d3a8;--warn-fg:#6b5320;
+    color-scheme:light;
+  }
+  :root[data-theme="dark"]{
+    --ink:#ebe5d9;--paper:#141210;--panel:#1d1a16;--line:#332e27;
+    --amber:#e2833d;--amber-soft:#3a2a1c;--muted:#9a9184;--ok:#6dc492;--err:#e57363;
+    --on-ink:#141210;--on-amber:#1a1310;--amber-hover:#f09a58;
+    --pre-bg:#0e0d0b;--pre-fg:#e4dfd5;--pre-mk:#fff;--pre-dot:#4a463f;
+    --ok-bg:#16261c;--ok-bd:#2f4d38;--ok-fg:#8fd3a8;
+    --err-bg:#2b1614;--err-bd:#57302b;--err-fg:#f0a094;
+    --warn-bg:#2a2213;--warn-bd:#4d3f21;--warn-fg:#e0c584;
+    color-scheme:dark;
+  }
+  body,header,.howto,.markbar,textarea.paste,.btn,.mini,.mark,.chip,.tab,.status,.preview{transition:background-color .18s ease,color .18s ease,border-color .18s ease;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;line-height:1.5;}
+  header{padding:24px 30px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:18px;}
+  .theme-toggle{flex-shrink:0;white-space:nowrap;}
+  header h1{margin:0;font-size:1.4rem;letter-spacing:-0.02em;font-weight:700;}
+  header .sub{color:var(--muted);font-size:0.88rem;margin-top:4px;}
+  .wrap{padding:22px 30px 60px;max-width:1080px;margin:0 auto;}
+  .howto{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:9px;padding:14px 18px;margin-bottom:18px;font-size:0.88rem;}
+  .howto b{color:var(--amber);}
+  .howto pre{background:var(--amber-soft);border-radius:6px;padding:8px 12px;margin:8px 0 0;font-size:0.82rem;white-space:pre-wrap;font-family:'Consolas',monospace;}
+  .step-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--amber);font-weight:700;margin-bottom:8px;}
+  textarea.paste{width:100%;min-height:280px;border:1px solid var(--line);border-radius:0 0 10px 10px;border-top:none;padding:14px 16px;font-family:'Consolas','SF Mono',monospace;font-size:0.87rem;line-height:1.55;resize:vertical;background:var(--panel);color:var(--ink);}
+  textarea.paste:focus{outline:2px solid var(--amber);outline-offset:-2px;border-color:var(--line);}
+  /* barra de marcadores */
+  .markbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px 10px 0 0;padding:9px 10px;}
+  .markbar .grp-label{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-weight:700;margin-right:2px;}
+  .mark{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:6px;padding:6px 11px;font-size:0.78rem;font-weight:700;letter-spacing:0.03em;cursor:pointer;font-family:'Consolas','SF Mono',monospace;}
+  .mark:hover{background:var(--amber-soft);border-color:var(--amber);color:var(--amber);}
+  .mark:active{transform:translateY(1px);}
+  .markbar .spacer{flex:1;}
+  .mini{border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:6px;padding:6px 10px;font-size:0.78rem;font-weight:600;cursor:pointer;}
+  .mini:hover:not(:disabled){background:var(--amber-soft);border-color:var(--amber);color:var(--amber);}
+  .mini:disabled{opacity:0.38;cursor:default;}
+  .hint{font-size:0.76rem;color:var(--muted);margin-top:6px;}
+  .config{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;}
+  .config label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:600;display:block;margin-bottom:5px;}
+  .config select,.config input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:0.88rem;background:var(--panel);color:var(--ink);}
+  .btn{background:var(--amber);color:var(--on-amber);border:none;padding:11px 22px;border-radius:8px;font-size:0.94rem;font-weight:600;cursor:pointer;}
+  .btn:hover{background:var(--amber-hover);}
+  .btn.ghost{background:transparent;color:var(--amber);border:1px solid var(--amber);}
+  .btn.ghost:hover{background:var(--amber-soft);}
+  .controls{display:flex;gap:11px;margin-top:14px;flex-wrap:wrap;align-items:center;}
+  .status{border-radius:9px;padding:12px 16px;font-size:0.87rem;margin:16px 0;}
+  .status.ok{background:var(--ok-bg);border:1px solid var(--ok-bd);color:var(--ok-fg);}
+  .status.err{background:var(--err-bg);border:1px solid var(--err-bd);color:var(--err-fg);}
+  .status.warn{background:var(--warn-bg);border:1px solid var(--warn-bd);color:var(--warn-fg);}
+  .counts{display:flex;gap:9px;flex-wrap:wrap;margin:10px 0;}
+  .chip{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;background:var(--panel);border:1px solid var(--line);font-size:0.83rem;font-weight:600;}
+  .chip .n{background:var(--ink);color:var(--on-ink);border-radius:10px;padding:1px 8px;font-size:0.75rem;}
+  .tabs{display:flex;gap:6px;margin:26px 0 0;border-bottom:2px solid var(--ink);}
+  .tab{padding:9px 18px;border:1px solid var(--line);border-bottom:none;border-radius:9px 9px 0 0;background:var(--panel);cursor:pointer;font-weight:600;font-size:0.9rem;color:var(--muted);position:relative;top:1px;}
+  .tab.active{background:var(--ink);color:var(--on-ink);border-color:var(--ink);}
+  .panel-tab{display:none;padding-top:18px;}
+  .panel-tab.active{display:block;}
+  .preview{background:var(--pre-bg);color:var(--pre-fg);border-radius:9px;padding:16px 18px;font-size:0.9rem;line-height:1.6;white-space:pre-wrap;max-height:420px;overflow:auto;}
+  .preview .mk{font-weight:700;color:var(--pre-mk);}
+  .preview .dot{color:var(--pre-dot);}
+  /* tabela do fluxo — espelha o formato colado no documento */
+  table.flux-table{border-collapse:collapse;border:1px solid #000;}
+  table.flux-table td{font-family:'Courier New',monospace;font-size:11pt;text-align:center;background-color:#efefef;border:1px solid #000;padding:4pt 26pt;color:#000;}
+  .copied{color:var(--ok);font-size:0.82rem;font-weight:600;}
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;margin:6px 0 12px;}
+  .section-head h2{margin:0;font-size:1.05rem;}
+  .section-head .meta{color:var(--muted);font-size:0.83rem;}
+
+  /* ---- abas principais ---- */
+  .tabs.main{margin:0 0 20px;border-bottom:2px solid var(--ink);}
+  .mtab{padding:10px 20px;border:1px solid var(--line);border-bottom:none;border-radius:9px 9px 0 0;background:var(--panel);cursor:pointer;font-weight:600;font-size:0.92rem;color:var(--muted);position:relative;top:1px;}
+  .mtab.active{background:var(--ink);color:var(--on-ink);border-color:var(--ink);}
+  .main-tab{display:none;}
+  .main-tab.active{display:block;}
+  /* ---- areas de arrastar ---- */
+  .dropzone{border:2px dashed var(--line);border-radius:11px;background:var(--panel);padding:34px 22px;text-align:center;cursor:pointer;margin:16px 0;}
+  .dropzone:hover,.dropzone.hover{border-color:var(--amber);background:var(--amber-soft);}
+  .dropzone.small{padding:18px 16px;margin:0;text-align:left;}
+  .dz-icon{font-size:2rem;line-height:1;margin-bottom:10px;}
+  .dz-title{font-weight:700;font-size:0.95rem;}
+  .dz-sub{color:var(--muted);font-size:0.82rem;margin-top:4px;}
+  .dz-sub code,.howto code{background:var(--amber-soft);border-radius:4px;padding:1px 6px;font-family:'Consolas',monospace;font-size:0.95em;}
+  .zones{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px;}
+  @media(max-width:760px){.zones{grid-template-columns:1fr;}}
+  .folderbar{display:flex;gap:11px;align-items:center;flex-wrap:wrap;margin:16px 0;}
+  .folder-name{font-family:'Consolas',monospace;font-size:0.85rem;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:7px 12px;}
+  .folder-name.ativa{color:var(--ok);border-color:var(--ok);}
+  .chk{display:flex;align-items:center;gap:8px;font-size:0.86rem;color:var(--muted);margin-top:4px;cursor:pointer;}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Gerador de RTF · Teleprompter Cifra Club</h1>
+    <div class="sub">Versão de teste: roteiro/TP + conversão de XML + organização da pasta da aula.</div>
+  </div>
+  <button class="mini theme-toggle" id="btnTema" onclick="alternarTema()">🌙 Escuro</button>
+</header>
+
+<div class="wrap">
+
+  <div class="tabs main">
+    <div class="mtab active" data-main="tp" onclick="switchMain('tp')">Roteiro &amp; TP</div>
+    <div class="mtab" data-main="xml" onclick="switchMain('xml')">XML &rarr; Premiere</div>
+    <div class="mtab" data-main="pasta" onclick="switchMain('pasta')">Pasta da aula</div>
+  </div>
+
+<div class="main-tab active" id="main-tp">
+  <div class="howto">
+    <b>Como escrever:</b> clique nos botões de cena para inserir o rótulo já numerado, e escreva o texto embaixo. Só LOC e ACORDES entram no Teleprompter; as outras cenas entram só na lista do fluxograma.
+    <pre>LOC 01
+Texto da primeira locução aqui...
+
+ACORDES 01
+Bm  F#7
+Texto da fala dos acordes...
+
+LOC 02
+Texto da segunda locução...</pre>
+  </div>
+
+  <div class="step-label">Colar o roteiro</div>
+
+  <div class="markbar">
+    <span class="grp-label">Inserir cena</span>
+    <button class="mark" onclick="inserirMarcador('LOC')">LOC</button>
+    <button class="mark" onclick="inserirMarcador('ACORDES')">ACORDES</button>
+    <button class="mark" onclick="inserirMarcador('RITMO')">RITMO</button>
+    <button class="mark" onclick="inserirMarcador('DEDIL')">DEDIL</button>
+    <button class="mark" onclick="inserirMarcador('TAB')">TAB</button>
+    <button class="mark" onclick="inserirMarcador('TOCA')">TOCA</button>
+    <button class="mark" onclick="inserirMarcador('TOCA SOLO')">TOCA SOLO</button>
+    <span class="spacer"></span>
+    <button class="mini" id="btnUndo" onclick="desfazer()" title="Ctrl+Z">↶ Desfazer</button>
+    <button class="mini" id="btnRedo" onclick="refazer()" title="Ctrl+Y">↷ Refazer</button>
+    <button class="mini" onclick="renumerar()" title="Corrige a numeração de todas as cenas na ordem em que aparecem">Renumerar</button>
+  </div>
+  <textarea class="paste" id="input" placeholder="Clique num botão de cena acima (ou cole o roteiro pronto)..."></textarea>
+  <div class="hint">O número entra sozinho: cada clique em LOC continua a contagem (LOC 01, LOC 02...). Ctrl+Z desfaz qualquer alteração, inclusive o Limpar.</div>
+
+  <div class="config" style="grid-template-columns:repeat(2,1fr)">
+    <div><label>Nome da aula (define o nome do arquivo)</label><input type="text" id="nomeAula" placeholder="Ex: Aula 2.6. Aplicando os intervalos em melodias"></div>
+    <div><label>Pontos (respiro)</label><input type="number" id="numDots" value="20" min="0" max="60"></div>
+  </div>
+  <div id="nomePreview" style="display:none;margin-top:10px;">
+    <div class="config" style="grid-template-columns:1fr auto;gap:8px;align-items:end;margin-bottom:8px;">
+      <div><label>Nome pro TP e pro Fluxo</label><input type="text" id="nomeTPOut" readonly></div>
+      <button class="btn ghost" onclick="copiarCampo('nomeTPOut','tpNameOk')">Copiar</button>
+    </div>
+    <span class="copied" id="tpNameOk" style="display:none">✓ copiado</span>
+    <div class="config" style="grid-template-columns:1fr auto;gap:8px;align-items:end;margin-top:8px;">
+      <div><label>Nome pro Fluxo</label><input type="text" id="nomeFluxoOut" readonly></div>
+      <button class="btn ghost" onclick="copiarCampo('nomeFluxoOut','fluxoNameOk')">Copiar</button>
+    </div>
+    <span class="copied" id="fluxoNameOk" style="display:none">✓ copiado</span>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="processar()">Processar roteiro</button>
+    <button class="btn ghost" onclick="carregarExemplo()">Ver exemplo</button>
+    <button class="btn ghost" onclick="limpar()">Limpar</button>
+  </div>
+
+  <div id="status"></div>
+  <div class="counts" id="counts"></div>
+
+  <div id="results" style="display:none">
+    <div class="tabs">
+      <div class="tab active" data-tab="tp" onclick="switchTab('tp')">Teleprompter</div>
+      <div class="tab" data-tab="flux" onclick="switchTab('flux')">Fluxograma</div>
+    </div>
+
+    <div class="panel-tab active" id="tab-tp">
+      <div class="section-head"><h2>Prévia do arquivo</h2><span class="meta" id="tpMeta"></span></div>
+      <div class="preview" id="tpPreview"></div>
+      <div class="controls" style="margin-top:14px">
+        <button class="btn" onclick="baixarArquivo('tpp')">Baixar .tpp pro Teleprompter</button>
+        <span class="copied" id="tppOk" style="display:none">✓ baixado</span>
+        <button class="btn ghost" onclick="baixarArquivo('rtf')">Baixar como .rtf</button>
+        <span class="copied" id="rtfOk" style="display:none">✓ baixado</span>
+        <button class="btn ghost" onclick="salvarTpNaPasta()">Salvar na pasta…</button>
+        <span class="copied" id="tpPastaOk" style="display:none">✓ salvo</span>
+      </div>
+    </div>
+
+    <div class="panel-tab" id="tab-flux">
+      <div class="section-head"><h2>Lista de cenas</h2><span class="meta" id="fluxMeta"></span></div>
+      <table class="flux-table"><tbody id="fluxBody"></tbody></table>
+      <div class="controls" style="margin-top:12px">
+        <button class="btn" onclick="copiarFlux()">Copiar lista de cenas</button>
+        <span class="copied" id="fluxOk" style="display:none">✓ copiado</span>
+      </div>
+      <div class="hint">Cola direto no documento: já vai com fundo #efefef, Courier New 11 e borda fina preta.</div>
+    </div>
+  </div>
+</div><!-- fim main-tp -->
+
+<div class="main-tab" id="main-xml">
+  <div class="howto">
+    <b>O que ele faz:</b> reescreve o XML do DaVinci para o Premiere procurar os arquivos pelo nome que está na timeline (LOC…, RITMO…, TOCA…). Também zera o timecode da sequência e corrige motion, anamorphic e field dominance.
+  </div>
+  <div class="dropzone" id="dzXmlSolto">
+    <div class="dz-icon">✂</div>
+    <div class="dz-title">Arraste o XML do DaVinci aqui</div>
+    <div class="dz-sub">ou clique para escolher o arquivo</div>
+  </div>
+  <label class="chk"><input type="checkbox" id="xmlNaPasta"> Em vez de baixar, salvar direto em <code>Premiere/</code> da pasta da aula</label>
+  <div id="xmlStatus"></div>
+</div>
+
+<div class="main-tab" id="main-pasta">
+  <div class="howto">
+    <b>Como funciona:</b> escolha a pasta que o DaVinci criou (a do nome da timeline). A página cria as subpastas que faltam e guarda cada arquivo no lugar certo. Ela só enxerga a pasta que você escolher — nada fora dela.
+  </div>
+  <div class="folderbar">
+    <button class="btn" onclick="escolherPastaAula()">Escolher pasta da aula</button>
+    <button class="btn ghost" onclick="criarSubpastas()">Criar Sonar e Premiere</button>
+    <span class="folder-name" id="pastaAulaNome">nenhuma pasta escolhida</span>
+  </div>
+  <div id="pastaStatus"></div>
+
+  <div class="zones">
+    <div class="dropzone small" id="dzXml">
+      <div class="dz-title">XML do DaVinci</div>
+      <div class="dz-sub">converte e salva em <code>Premiere/</code></div>
+    </div>
+    <div class="dropzone small" id="dzSonar">
+      <div class="dz-title">Projeto de áudio</div>
+      <div class="dz-sub">salva em <code>Sonar/</code></div>
+    </div>
+    <div class="dropzone small" id="dzExport">
+      <div class="dz-title">Áudios exportados</div>
+      <div class="dz-sub">salva em <code>Assets/Sonar/</code></div>
+    </div>
+    <div class="dropzone small" id="dzFluxo">
+      <div class="dz-title">Fluxo (iCloud)</div>
+      <div class="dz-sub">renomeia para <code>fluxo</code> e salva na raiz</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+/* ---------- tema claro / escuro ---------- */
+function aplicarTema(t){
+  document.documentElement.setAttribute('data-theme',t);
+  const b=document.getElementById('btnTema');
+  if(b)b.textContent = t==='dark' ? '☀ Claro' : '🌙 Escuro';
+  try{localStorage.setItem('tema-gerador-tp',t);}catch(e){}
+}
+function alternarTema(){
+  aplicarTema(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
+}
+(function(){
+  let t=null;
+  try{t=localStorage.getItem('tema-gerador-tp');}catch(e){}
+  if(t!=='dark'&&t!=='light'){
+    t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
+  }
+  aplicarTema(t);
+})();
+
+/* ordem oficial do fluxograma */
+const ORDEM=['LOC','ACORDES','RITMO','DEDIL','TAB','TOCA','TOCA SOLO'];
+const sceneRe=/^\s*(TOCA\s+SOLO|LOC|TOCA|RITMO|ACORDES?|TAB|DEDIL(?:HADO)?)\s*0*(\d+)?\s*$/i;
+let STATE={ordered:[],flux:[]};
+const ta=document.getElementById('input');
+
+function normLabel(l){
+  const m=l.match(sceneRe);
+  if(!m)return null;
+  let type=m[1].toUpperCase().replace(/\s+/g,' ');
+  if(type==='DEDILHADO')type='DEDIL';
+  if(type==='ACORDE')type='ACORDES';
+  const num=m[2]?parseInt(m[2],10):null;
+  return {type,num,label:num!=null?`${type} ${String(num).padStart(2,'0')}`:type};
+}
+
+/* ---------- histórico (Ctrl+Z / Ctrl+Y) ---------- */
+let histUndo=[],histRedo=[],valorAtual=ta.value,typingTimer=null;
+
+function pushHist(valor){
+  if(histUndo.length && histUndo[histUndo.length-1]===valor)return;
+  histUndo.push(valor);
+  if(histUndo.length>200)histUndo.shift();
+  histRedo=[];
+}
+function setInput(novo){
+  clearTimeout(typingTimer);
+  if(ta.value!==valorAtual)pushHist(valorAtual);
+  pushHist(ta.value);
+  ta.value=novo;
+  valorAtual=novo;
+  atualizarBotoesHist();
+}
+function desfazer(){
+  clearTimeout(typingTimer);
+  if(ta.value!==valorAtual){pushHist(valorAtual);valorAtual=ta.value;}
+  if(!histUndo.length)return;
+  const anterior=histUndo.pop();
+  histRedo.push(ta.value);
+  ta.value=anterior;valorAtual=anterior;
+  ta.focus();atualizarBotoesHist();
+}
+function refazer(){
+  if(!histRedo.length)return;
+  const prox=histRedo.pop();
+  histUndo.push(ta.value);
+  ta.value=prox;valorAtual=prox;
+  ta.focus();atualizarBotoesHist();
+}
+function atualizarBotoesHist(){
+  document.getElementById('btnUndo').disabled=!histUndo.length && ta.value===valorAtual;
+  document.getElementById('btnRedo').disabled=!histRedo.length;
+}
+ta.addEventListener('input',()=>{
+  clearTimeout(typingTimer);
+  const anterior=valorAtual;
+  typingTimer=setTimeout(()=>{
+    pushHist(anterior);
+    valorAtual=ta.value;
+    atualizarBotoesHist();
+  },500);
+});
+ta.addEventListener('keydown',e=>{
+  const ctrl=e.ctrlKey||e.metaKey;
+  if(!ctrl)return;
+  const k=e.key.toLowerCase();
+  if(k==='z'&&!e.shiftKey){e.preventDefault();desfazer();}
+  else if(k==='y'||(k==='z'&&e.shiftKey)){e.preventDefault();refazer();}
+});
+document.addEventListener('keydown',e=>{
+  if(document.activeElement===ta)return;
+  const ctrl=e.ctrlKey||e.metaKey;
+  if(!ctrl)return;
+  const k=e.key.toLowerCase();
+  if(k==='z'&&!e.shiftKey){e.preventDefault();desfazer();}
+  else if(k==='y'||(k==='z'&&e.shiftKey)){e.preventDefault();refazer();}
+});
+atualizarBotoesHist();
+
+/* ---------- botões de cena ---------- */
+function proximoNumero(tipo){
+  let max=0;
+  ta.value.split(/\r?\n/).forEach(l=>{
+    const n=normLabel(l.trim());
+    if(n&&n.type===tipo&&n.num!=null&&n.num>max)max=n.num;
+  });
+  return max+1;
+}
+function inserirMarcador(tipo){
+  const label=`${tipo} ${String(proximoNumero(tipo)).padStart(2,'0')}`;
+  const texto=ta.value;
+  const ini=ta.selectionStart,fim=ta.selectionEnd;
+  const antes=texto.slice(0,ini).replace(/[ \t]+$/,'');
+  const depois=texto.slice(fim).replace(/^[ \t]+/,'');
+  const pre = antes==='' ? '' : (antes.endsWith('\n\n') ? '' : antes.endsWith('\n') ? '\n' : '\n\n');
+  const pos = depois==='' ? '\n' : (depois.startsWith('\n') ? '\n' : '\n\n');
+  const novo=antes+pre+label+pos+depois;
+  const cursor=(antes+pre+label+'\n').length;
+  setInput(novo);
+  ta.focus();
+  ta.setSelectionRange(cursor,cursor);
+  ta.scrollTop=ta.scrollHeight;
+}
+/* renumera todas as cenas na ordem em que aparecem no texto */
+function renumerar(){
+  const contador={};
+  const linhas=ta.value.split(/\r?\n/).map(linha=>{
+    const n=normLabel(linha.trim());
+    if(!n)return linha;
+    contador[n.type]=(contador[n.type]||0)+1;
+    return `${n.type} ${String(contador[n.type]).padStart(2,'0')}`;
+  });
+  setInput(linhas.join('\n'));
+}
+
+/* ---------- parse ---------- */
+function parse(raw){
+  const lines=raw.split(/\r?\n/);
+  const scenes=[];
+  let atual=null;
+  lines.forEach(rawLine=>{
+    const l=rawLine.trim();
+    const n=normLabel(l);
+    if(n){
+      atual={...n,text:[]};
+      scenes.push(atual);
+    } else if(atual){
+      atual.text.push(rawLine.trim());
+    }
+  });
+  scenes.forEach(s=>{
+    while(s.text.length && s.text[0]==='')s.text.shift();
+    while(s.text.length && s.text[s.text.length-1]==='')s.text.pop();
+    const cleaned=[]; let prevEmpty=false;
+    s.text.forEach(t=>{
+      if(t===''){ if(!prevEmpty)cleaned.push(''); prevEmpty=true; }
+      else { cleaned.push(t); prevEmpty=false; }
+    });
+    s.text=cleaned;
+  });
+  return scenes;
+}
+/* ordena pela ordem oficial; tipos ausentes simplesmente não aparecem */
+function ordenarFluxo(scenes){
+  return scenes.map((s,i)=>({s,i})).sort((a,b)=>{
+    const ia=ORDEM.indexOf(a.s.type),ib=ORDEM.indexOf(b.s.type);
+    if(ia!==ib)return (ia<0?99:ia)-(ib<0?99:ib);
+    const na=a.s.num==null?0:a.s.num,nb=b.s.num==null?0:b.s.num;
+    if(na!==nb)return na-nb;
+    return a.i-b.i;
+  }).map(o=>o.s);
+}
+
+function processar(){
+  const raw=ta.value;
+  if(!raw.trim()){ document.getElementById('status').innerHTML='<div class="status err">Cole o roteiro primeiro.</div>'; return; }
+  const scenes=parse(raw);
+  if(!scenes.length){ document.getElementById('status').innerHTML='<div class="status err">Não reconheci nenhuma cena. Confere se o rótulo (ex: LOC 01) está numa linha própria.</div>'; return; }
+
+  const exportaveis=scenes.filter(s=>s.type==='LOC'||s.type==='ACORDES');
+  const semTexto=exportaveis.filter(s=>s.text.join('').trim()==='');
+  const locs=exportaveis.filter(s=>s.type==='LOC');
+  const acs=exportaveis.filter(s=>s.type==='ACORDES');
+  const ordered=locs.concat(acs);
+
+  STATE={ordered,flux:ordenarFluxo(scenes)};
+
+  const st=document.getElementById('status');
+  if(semTexto.length){
+    st.innerHTML=`<div class="status warn">⚠ ${semTexto.length} cena(s) sem texto: ${semTexto.map(s=>s.label).join(', ')}. Confere se esqueceu de colar a fala.</div>`;
+  } else {
+    st.innerHTML=`<div class="status ok">✓ ${exportaveis.length} cenas prontas (${locs.length} LOC + ${acs.length} ACORDES).</div>`;
+  }
+
+  const counts={};
+  scenes.forEach(s=>counts[s.type]=(counts[s.type]||0)+1);
+  const c=document.getElementById('counts'); c.innerHTML='';
+  ORDEM.filter(t=>counts[t]).forEach(t=>{
+    c.innerHTML+=`<div class="chip">${t}<span class="n">${counts[t]}</span></div>`;
+  });
+
+  document.getElementById('results').style.display='block';
+  renderPreview();
+  renderFlux();
+}
+
+function renderPreview(){
+  const dots=parseInt(document.getElementById('numDots').value)||0;
+  const pv=document.getElementById('tpPreview');
+  let html='';
+  for(let i=0;i<dots;i++)html+='<span class="dot">.</span>\n';
+  STATE.ordered.forEach(s=>{
+    html+=`<span class="mk">&lt;&gt; ${s.label}</span>\n`;
+    html+=escapeHtml(s.text.join('\n'))+'\n\n';
+  });
+  for(let i=0;i<dots;i++)html+='<span class="dot">.</span>\n';
+  pv.innerHTML=html;
+  document.getElementById('tpMeta').textContent=`${STATE.ordered.length} cenas no arquivo`;
+}
+/* linhas do fluxo com uma linha vazia separando cada tipo de cena */
+function linhasFluxo(){
+  const out=[]; let tipoAnterior=null;
+  STATE.flux.forEach(s=>{
+    if(tipoAnterior!==null && s.type!==tipoAnterior)out.push('');
+    out.push(s.label);
+    tipoAnterior=s.type;
+  });
+  return out;
+}
+function renderFlux(){
+  document.getElementById('fluxBody').innerHTML=linhasFluxo()
+    .map(l=>`<tr><td>${l===''?'&nbsp;':escapeHtml(l)}</td></tr>`).join('');
+  document.getElementById('fluxMeta').textContent=`${STATE.flux.length} cenas · ordem do fluxograma`;
+}
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
+  document.querySelectorAll('.panel-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+}
+
+/* ---------- RTF ---------- */
+function rtfEscape(s){let out='';for(const ch of s){const c=ch.codePointAt(0);if(ch==='\\'||ch==='{'||ch==='}')out+='\\'+ch;else if(c>127)out+='\\u'+c+'?';else out+=ch;}return out;}
+function buildRtf(){
+  const dots=parseInt(document.getElementById('numDots').value)||0;
+  const par=(t,b)=>'\\pard '+(b?('{\\b '+rtfEscape(t)+'}'):rtfEscape(t))+'\\par\n';
+  let body='';
+  for(let i=0;i<dots;i++)body+=par('.');
+  STATE.ordered.forEach(s=>{
+    body+=par('<> '+s.label,true);
+    if(s.text.length===0)body+=par('');
+    else s.text.forEach(line=>body+=par(line));
+    body+=par('');
+  });
+  for(let i=0;i<dots;i++)body+=par('.');
+  return '{\\rtf1\\ansi\\ansicpg1252\\deff0\n{\\fonttbl{\\f0 Segoe UI;}}\n\\viewkind4\\uc1\n\\f0\\fs28\n'+body+'}';
+}
+/* OPCAO TP: minúsculas, sem acento/cedilha/pontuação, espaços/hífens/pontos extras -> underscore, mantém número da aula no início */
+function slugifyAula(nome){
+  if(!nome||!nome.trim())return 'roteiro';
+  let s=nome.trim();
+  s=s.replace(/^aula\s+/i,'');
+  const m=s.match(/^(\d+(?:\.\d+)*)\.?\s*(.*)$/);
+  let numero='', resto=s;
+  if(m){ numero=m[1]; resto=m[2]; }
+  resto=resto.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  resto=resto.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  return numero ? `${numero}_${resto}` : resto;
+}
+function atualizarNomePreview(){
+  const nome=document.getElementById('nomeAula').value;
+  const slug=slugifyAula(nome);
+  const pv=document.getElementById('nomePreview');
+  if(nome.trim()){
+    pv.style.display='block';
+    document.getElementById('nomeTPOut').value=slug;
+    document.getElementById('nomeFluxoOut').value=nome.trim();
+  } else {
+    pv.style.display='none';
+  }
+}
+document.getElementById('nomeAula').addEventListener('input',atualizarNomePreview);
+
+function copiarCampo(inputId,okId){
+  const el=document.getElementById(inputId);
+  el.select();
+  navigator.clipboard.writeText(el.value).then(()=>flash(okId));
+}
+
+/* mesmo conteudo (RTF) — muda so a terminacao do nome do arquivo */
+function baixarArquivo(ext){
+  const nome=document.getElementById('nomeAula').value;
+  const slug=slugifyAula(nome);
+  const blob=new Blob([buildRtf()],{type:'application/octet-stream'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`${slug}.${ext}`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  flash(ext==='tpp'?'tppOk':'rtfOk');
+}
+/* copia a lista já formatada: #efefef, Courier New 11, borda em negrito */
+function copiarFlux(){
+  const items=linhasFluxo();
+  const text=items.join('\n');
+  const tdStyle="font-family:'Courier New',monospace;font-size:11.0pt;text-align:center;background-color:#efefef;border:1px solid #000000;padding:3pt 24pt;color:#000000;";
+  const html='<table style="border-collapse:collapse;border:1px solid #000000;"><tbody>'
+    +items.map(l=>`<tr><td style="${tdStyle}">${l===''?'&nbsp;':escapeHtml(l)}</td></tr>`).join('')
+    +'</tbody></table>';
+  const okId='fluxOk';
+  if(navigator.clipboard && window.ClipboardItem){
+    const item=new ClipboardItem({
+      'text/plain': new Blob([text],{type:'text/plain'}),
+      'text/html': new Blob([html],{type:'text/html'})
+    });
+    navigator.clipboard.write([item]).then(()=>flash(okId)).catch(()=>{
+      navigator.clipboard.writeText(text).then(()=>flash(okId));
+    });
+  } else {
+    navigator.clipboard.writeText(text).then(()=>flash(okId));
+  }
+}
+function flash(id){const el=document.getElementById(id);el.style.display='inline';setTimeout(()=>el.style.display='none',1600);}
+function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function limpar(){
+  setInput('');
+  document.getElementById('nomeAula').value='';
+  atualizarNomePreview();
+  document.getElementById('results').style.display='none';
+  document.getElementById('status').innerHTML='';
+  document.getElementById('counts').innerHTML='';
+}
+
+function carregarExemplo(){
+  setInput(`LOC 01
+Hoje é dia de groove! Eu to aqui pra te ensinar Acenda o Farol do síndico, o grande Tim Maia!
+
+Essa música não tem violão, mas aqui eu adaptei o arranjo pro nosso instrumento.
+
+TOCA 01
+
+ACORDES 01
+Bora lá! Pra introdução você vai precisar desses acordes
+C7M  B7  Em7  Dm7  G7
+
+Deixa eu te apresentar o ritmo!
+
+RITMO 01
+
+LOC 02
+Depois da introdução aparece a primeira parte, então vamo praticar!
+
+ACORDES 02
+A música fica se repetindo, mas você já aprendeu tudo!`);
+  processar();
+}
+
+/* ================= abas principais ================= */
+function switchMain(t){
+  document.querySelectorAll('.mtab').forEach(el=>el.classList.toggle('active',el.dataset.main===t));
+  document.querySelectorAll('.main-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('main-'+t).classList.add('active');
+}
+
+/* ================= conversao do XML (nativa, sem Python) ================= */
+const ATTRS_VIDEO={"TL.SQTrackShy":"0","TL.SQTrackExpandedHeight":"25","TL.SQTrackExpanded":"0","MZ.TrackTargeted":"1"};
+const ATTRS_AUDIO={"TL.SQTrackAudioKeyframeStyle":"0","TL.SQTrackExpandedHeight":"25","PannerCurrentValue":"0.5","PannerIsInverted":"true","premiereTrackType":"Stereo"};
+const filho=(el,tag)=>{ for(const c of el.children){ if(c.tagName===tag)return c; } return null; };
+
+function converterXml(texto){
+  const doc=new DOMParser().parseFromString(texto,'application/xml');
+  if(doc.getElementsByTagName('parsererror').length) throw new Error('XML inv\u00e1lido ou corrompido.');
+  const root=doc.documentElement;
+
+  /* 1 - zera o timecode da sequencia */
+  const seq=filho(root,'sequence');
+  if(seq){
+    const tc=filho(seq,'timecode');
+    if(tc){
+      const st=filho(tc,'string'); if(st)st.textContent='00:00:00:00';
+      const fr=filho(tc,'frame'); if(fr)fr.textContent='0';
+    }
+  }
+
+  /* 2 - corrige cada clipitem */
+  const clips=Array.from(doc.getElementsByTagName('clipitem'));
+  clips.forEach(ci=>{
+    let ana=filho(ci,'anamorphic');
+    if(!ana){ana=doc.createElement('anamorphic');ci.appendChild(ana);}
+    ana.textContent='FALSE';
+
+    let fd=filho(ci,'fielddominance');
+    if(!fd){fd=doc.createElement('fielddominance');ci.appendChild(fd);}
+    fd.textContent='none';
+
+    const nomeEl=filho(ci,'name'), fileEl=filho(ci,'file');
+    if(fileEl && nomeEl && nomeEl.textContent && nomeEl.textContent.trim()){
+      let alvo=nomeEl.textContent.trim();
+      if(!alvo.toLowerCase().endsWith('.mov')){
+        alvo = alvo.includes('.') ? alvo.replace(/\.[^.]*$/,'.mov') : alvo+'.mov';
+      }
+      const fn=filho(fileEl,'name'); if(fn)fn.textContent=alvo;
+      const pu=filho(fileEl,'pathurl'); if(pu)pu.textContent='file://localhost/'+alvo;
+    }
+
+    const filtros=filho(ci,'filters');
+    if(filtros){
+      Array.from(filtros.getElementsByTagName('effect')).forEach(ef=>{
+        const n=filho(ef,'name'), id=filho(ef,'effectid');
+        if(n && n.textContent && /sizing|transform/i.test(n.textContent)){
+          if(id)id.textContent='basic-motion';
+          n.textContent='Basic Motion';
+        }
+      });
+    }
+
+    if(!filho(ci,'transform')){
+      const t=doc.createElement('transform');
+      [['forward','true'],['motion','true'],['stretch','false']].forEach(([tag,val])=>{
+        const e=doc.createElement(tag); e.textContent=val; t.appendChild(e);
+      });
+      ci.appendChild(t);
+    }
+  });
+
+  /* 3 - atributos das tracks */
+  Array.from(doc.getElementsByTagName('track')).forEach(tr=>{
+    const attrs = tr.getElementsByTagName('channelcount').length ? ATTRS_AUDIO : ATTRS_VIDEO;
+    Object.keys(attrs).forEach(k=>tr.setAttribute(k,attrs[k]));
+  });
+
+  root.setAttribute('version','5');
+  const corpo=new XMLSerializer().serializeToString(doc).replace(/^\s*<\?xml[^>]*\?>\s*/i,'');
+  return '<?xml version="1.0" encoding="UTF-8"?>\n'+corpo;
+}
+function nomeConvertido(nomeOriginal){
+  return nomeOriginal.replace(/\.xml$/i,'')+'_corrigido.xml';
+}
+
+/* ================= acesso a pastas ================= */
+const TEM_FS = typeof window.showDirectoryPicker === 'function';
+let pastaAula=null, pastaTP=null;
+
+function idbAbrir(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open('cifra-pastas',1);
+    r.onupgradeneeded=()=>r.result.createObjectStore('h');
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function guardar(chave,valor){
+  try{
+    const db=await idbAbrir();
+    await new Promise((res,rej)=>{
+      const tx=db.transaction('h','readwrite');
+      tx.objectStore('h').put(valor,chave);
+      tx.oncomplete=res; tx.onerror=()=>rej(tx.error);
+    });
+  }catch(e){}
+}
+async function recuperar(chave){
+  try{
+    const db=await idbAbrir();
+    return await new Promise(res=>{
+      const tx=db.transaction('h','readonly');
+      const rq=tx.objectStore('h').get(chave);
+      rq.onsuccess=()=>res(rq.result||null);
+      rq.onerror=()=>res(null);
+    });
+  }catch(e){ return null; }
+}
+async function temPermissao(h,pedir){
+  if(!h)return false;
+  const opt={mode:'readwrite'};
+  try{
+    if(await h.queryPermission(opt)==='granted')return true;
+    if(pedir && await h.requestPermission(opt)==='granted')return true;
+  }catch(e){}
+  return false;
+}
+function avisoSemSuporte(alvo){
+  msg(alvo,'err','Este recurso precisa do Chrome ou Edge, e a p\u00e1gina precisa estar aberta pelo link do site (n\u00e3o pelo arquivo solto).');
+}
+function msg(id,tipo,texto){
+  const el=document.getElementById(id);
+  if(el)el.innerHTML='<div class="status '+tipo+'">'+escapeHtml(texto)+'</div>';
+}
+function marcarPastaAula(){
+  const el=document.getElementById('pastaAulaNome');
+  if(pastaAula){ el.textContent=pastaAula.name; el.classList.add('ativa'); }
+  else { el.textContent='nenhuma pasta escolhida'; el.classList.remove('ativa'); }
+}
+
+async function escolherPastaAula(){
+  if(!TEM_FS){ avisoSemSuporte('pastaStatus'); return; }
+  try{
+    pastaAula=await window.showDirectoryPicker({mode:'readwrite',id:'pastaAula'});
+    await guardar('pastaAula',pastaAula);
+    marcarPastaAula();
+    msg('pastaStatus','ok','Pasta conectada: '+pastaAula.name);
+  }catch(e){ if(e.name!=='AbortError')msg('pastaStatus','err','N\u00e3o consegui abrir a pasta: '+e.message); }
+}
+async function garantirPastaAula(){
+  if(!TEM_FS){ avisoSemSuporte('pastaStatus'); return false; }
+  if(!pastaAula){ msg('pastaStatus','warn','Escolha a pasta da aula primeiro.'); return false; }
+  if(!(await temPermissao(pastaAula,true))){ msg('pastaStatus','warn','Permiss\u00e3o da pasta n\u00e3o liberada. Clique em "Escolher pasta da aula" de novo.'); return false; }
+  return true;
+}
+async function criarSubpastas(){
+  if(!(await garantirPastaAula()))return;
+  try{
+    await pastaAula.getDirectoryHandle('Sonar',{create:true});
+    await pastaAula.getDirectoryHandle('Premiere',{create:true});
+    msg('pastaStatus','ok','Subpastas Sonar e Premiere prontas dentro de '+pastaAula.name+'.');
+  }catch(e){ msg('pastaStatus','err','Erro ao criar as subpastas: '+e.message); }
+}
+async function escrever(raiz,caminho,nome,conteudo){
+  let dir=raiz;
+  for(const parte of caminho){ dir=await dir.getDirectoryHandle(parte,{create:true}); }
+  const fh=await dir.getFileHandle(nome,{create:true});
+  const w=await fh.createWritable();
+  await w.write(conteudo);
+  await w.close();
+}
+
+/* ================= zonas de arrastar ================= */
+function ligarZona(idZona,aoReceber,aceita){
+  const dz=document.getElementById(idZona);
+  if(!dz)return;
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('hover');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('hover'));
+  dz.addEventListener('drop',e=>{
+    e.preventDefault();dz.classList.remove('hover');
+    if(e.dataTransfer.files.length)aoReceber(Array.from(e.dataTransfer.files));
+  });
+  dz.addEventListener('click',()=>{
+    const inp=document.createElement('input');
+    inp.type='file'; inp.multiple=true;
+    if(aceita)inp.accept=aceita;
+    inp.onchange=e=>{ if(e.target.files.length)aoReceber(Array.from(e.target.files)); };
+    inp.click();
+  });
+}
+
+async function copiarPara(arquivos,caminho,rotulo,renomear){
+  if(!(await garantirPastaAula()))return;
+  try{
+    for(const f of arquivos){
+      let nome=f.name;
+      if(renomear){
+        const i=nome.lastIndexOf('.');
+        nome=renomear+(i>0?nome.slice(i):'');
+      }
+      await escrever(pastaAula,caminho,nome,f);
+    }
+    msg('pastaStatus','ok',arquivos.length+' arquivo(s) em '+rotulo);
+  }catch(e){ msg('pastaStatus','err','Erro ao copiar: '+e.message); }
+}
+
+async function xmlParaPremiere(arquivos){
+  if(!(await garantirPastaAula()))return;
+  try{
+    for(const f of arquivos){
+      if(!/\.xml$/i.test(f.name))continue;
+      const saida=converterXml(await f.text());
+      await escrever(pastaAula,['Premiere'],nomeConvertido(f.name),new Blob([saida],{type:'application/xml'}));
+    }
+    msg('pastaStatus','ok','XML convertido e salvo em Premiere/.');
+  }catch(e){ msg('pastaStatus','err','Erro na convers\u00e3o: '+e.message); }
+}
+
+async function xmlSolto(arquivos){
+  const f=arquivos.find(a=>/\.xml$/i.test(a.name));
+  if(!f){ msg('xmlStatus','err','Isso n\u00e3o parece um arquivo .xml.'); return; }
+  let saida;
+  try{ saida=converterXml(await f.text()); }
+  catch(e){ msg('xmlStatus','err','Erro na convers\u00e3o: '+e.message); return; }
+
+  if(document.getElementById('xmlNaPasta').checked){
+    if(!(await garantirPastaAula())){ msg('xmlStatus','warn','Converti, mas nenhuma pasta est\u00e1 conectada. V\u00e1 na aba "Pasta da aula".'); return; }
+    try{
+      await escrever(pastaAula,['Premiere'],nomeConvertido(f.name),new Blob([saida],{type:'application/xml'}));
+      msg('xmlStatus','ok','Salvo em '+pastaAula.name+'/Premiere/'+nomeConvertido(f.name));
+    }catch(e){ msg('xmlStatus','err','Erro ao salvar: '+e.message); }
+  } else {
+    const url=URL.createObjectURL(new Blob([saida],{type:'application/xml'}));
+    const a=document.createElement('a');
+    a.href=url; a.download=nomeConvertido(f.name);
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    msg('xmlStatus','ok','Convertido: '+nomeConvertido(f.name));
+  }
+}
+
+/* salvar o .tpp direto numa pasta fixa */
+async function salvarTpNaPasta(){
+  if(!TEM_FS){ alert('Este recurso precisa do Chrome ou Edge, com a p\u00e1gina aberta pelo link do site.'); return; }
+  try{
+    if(!pastaTP || !(await temPermissao(pastaTP,true))){
+      pastaTP=await window.showDirectoryPicker({mode:'readwrite',id:'pastaTP'});
+      await guardar('pastaTP',pastaTP);
+    }
+    const slug=slugifyAula(document.getElementById('nomeAula').value);
+    await escrever(pastaTP,[],slug+'.tpp',new Blob([buildRtf()],{type:'application/octet-stream'}));
+    flash('tpPastaOk');
+  }catch(e){ if(e.name!=='AbortError')alert('N\u00e3o consegui salvar: '+e.message); }
+}
+
+/* ================= inicializacao ================= */
+ligarZona('dzXmlSolto',xmlSolto,'.xml');
+ligarZona('dzXml',xmlParaPremiere,'.xml');
+ligarZona('dzSonar',a=>copiarPara(a,['Sonar'],'Sonar/'));
+ligarZona('dzExport',a=>copiarPara(a,['Assets','Sonar'],'Assets/Sonar/'));
+ligarZona('dzFluxo',a=>copiarPara(a,[],'na raiz da pasta, como "fluxo"','fluxo'));
+
+(async function(){
+  if(!TEM_FS)return;
+  const a=await recuperar('pastaAula');
+  if(a && await temPermissao(a,false)){ pastaAula=a; marcarPastaAula(); }
+  else if(a){ pastaAula=a; marcarPastaAula(); msg('pastaStatus','warn','Pasta lembrada: '+a.name+'. Clique em "Escolher pasta da aula" para liberar o acesso nesta sess\u00e3o.'); }
+  const t=await recuperar('pastaTP');
+  if(t)pastaTP=t;
+})();
+
+</script>
+</body>
+</html>
