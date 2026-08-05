@@ -1,29 +1,18 @@
-# Gerador de RTF · Teleprompter Cifra Club
+# Pré e Pós-produção · Cifra Club
 
-Ferramenta de pré-produção que transforma o roteiro da aula em dois entregáveis:
+Ferramenta única, em um arquivo HTML, que cobre três tarefas do fluxo de aulas:
 
-- o arquivo `.tpp` que abre direto no **Teleprompter Pro**
-- a **lista de cenas** já formatada para colar no fluxograma
+1. **Roteiro & TP** — monta o roteiro por cena, gera o `.tpp` do Teleprompter Pro e a lista de cenas do fluxograma
+2. **Conversão do XML** — reescreve o XML do DaVinci para o Premiere
+3. **Organização da pasta da aula** — distribui os arquivos nas subpastas certas
 
-É um arquivo HTML único. Não instala nada, não precisa de internet: dois cliques e abre no navegador.
+Abre no navegador, sem instalar nada. As partes 2 e 3 precisam do **Chrome ou Edge** e da página aberta **pelo link do site** (a permissão de pasta não funciona com o arquivo solto).
 
-## Arquivos
+---
 
-| Arquivo | O que é |
-|---|---|
-| `gerador-tp.html` | A ferramenta. É este que você abre e usa. |
-| `README.md` | Este texto. |
+## Aba 1 · Roteiro & TP
 
-## Como usar
-
-1. Abra o `gerador-tp.html` (duplo clique).
-2. Monte o roteiro no campo de texto.
-3. Preencha o **nome da aula** — ele define o nome do arquivo gerado.
-4. Clique em **Processar roteiro**.
-5. Na aba **Teleprompter**, confira a prévia e clique em **Baixar .tpp**.
-6. Na aba **Fluxograma**, clique em **Copiar lista de cenas** e cole no documento.
-
-## Montando o roteiro
+### Montando o roteiro
 
 Cada cena começa com um rótulo em linha própria, e o texto vem embaixo:
 
@@ -34,60 +23,63 @@ Texto da primeira locução...
 ACORDES 01
 Bm  F#7
 Texto da fala dos acordes...
-
-LOC 02
-Texto da segunda locução...
 ```
 
-### Botões de cena
+**Botões de cena** — LOC, ACORDES, RITMO, DEDIL, TAB, TOCA, TOCA SOLO. Cada clique insere o rótulo já numerado na posição do cursor, continuando a contagem daquele tipo.
 
-A barra acima do campo de texto tem um botão para cada tipo: **LOC, ACORDES, RITMO, DEDIL, TAB, TOCA, TOCA SOLO**.
+**Desfazer** (`Ctrl+Z`) e **Refazer** (`Ctrl+Y`) — voltam qualquer alteração, inclusive um Limpar feito sem querer.
 
-Clique e o rótulo entra já numerado, na posição do cursor. A numeração continua sozinha — primeiro clique em LOC insere `LOC 01`, o seguinte insere `LOC 02`, e assim por diante. O cursor fica na linha de baixo, pronto para você escrever a fala.
+**Renumerar** — conserta a sequência quando fica torta. Mexe só nos rótulos, nunca no texto.
 
-### Desfazer, Refazer e Renumerar
+### Conferência automática
 
-- **Desfazer** (ou `Ctrl+Z`) volta qualquer alteração, inclusive um **Limpar** feito sem querer.
-- **Refazer** (ou `Ctrl+Y`) reaplica o que foi desfeito.
-- **Renumerar** conserta a sequência quando ela fica torta — se você apagar uma cena do meio e sobrar `LOC 01, LOC 03, LOC 04`, ele arruma para `01, 02, 03`. Mexe só nos rótulos, nunca no texto das falas.
+Ao processar, a página compara o texto colado com o texto que foi parar no arquivo do TP e mostra as duas contagens. Se não bater, ela avisa em vermelho — não use o arquivo nesse caso.
 
-## O que vai para cada lugar
+Ela também alerta quando há texto **antes da primeira cena**, que não entra em lugar nenhum, e quando há fala em cenas que não vão pro Teleprompter.
 
-**Teleprompter (.tpp)** — só as cenas **LOC** e **ACORDES**, que são as que têm fala. Saem com as LOCs primeiro e as ACORDES depois, cada rótulo marcado como `<> LOC 01` para o Teleprompter reconhecer. Os pontinhos no começo e no fim são o respiro de rolagem; a quantidade é ajustável no campo **Pontos**.
+### O que sai
 
-**Fluxograma** — todas as cenas, inclusive as que não têm texto. A lista sai sempre nesta ordem:
+**Arquivo do TP (.tpp)** — só as cenas LOC e ACORDES, com as LOCs primeiro. Cada rótulo marcado como `<> LOC 01`. Os pontinhos das pontas são o respiro de rolagem, ajustável no campo **Pontos**.
 
-```
-LOC → ACORDES → RITMO → DEDIL → TAB → TOCA → TOCA SOLO
-```
+**Lista de cenas** — todas as cenas, na ordem `LOC → ACORDES → RITMO → DEDIL → TAB → TOCA → TOCA SOLO`, com linha em branco entre os grupos. A cópia já vai formatada para o documento: fundo `#efefef`, Courier New 11, borda fina preta, centralizado.
 
-Os tipos que não existirem no roteiro são pulados. Entre um grupo e outro entra uma linha em branco.
+### Nomes dos arquivos
 
-A cópia já vai formatada para o documento: fundo `#efefef`, fonte Courier New 11, borda fina preta, texto centralizado. É só colar.
+Preenchendo o nome da aula, a página monta os dois nomes do padrão:
 
-## Nome dos arquivos
+- **Nome pro TP e pro Fluxo** — `Aula 2.6. Aplicando os intervalos` vira `2.6_aplicando_os_intervalos`
+- **Nome pro Fluxo** — a aula como você digitou
 
-Preenchendo o **nome da aula**, a ferramenta monta os dois nomes do padrão de pré-produção:
+O `.tpp` baixado usa o primeiro, com a terminação acrescentada.
 
-- **Nome pro TP e pro Fluxo** — minúsculo, sem acento nem pontuação, com underscore no lugar dos espaços, mantendo o número da aula na frente. `Aula 2.6. Aplicando os intervalos` vira `2.6_aplicando_os_intervalos`.
-- **Nome pro Fluxo** — o nome da aula como você escreveu.
+---
 
-Cada um tem um botão de copiar ao lado. O arquivo baixado usa esse mesmo nome, com a terminação `.tpp` acrescentada. O botão **Baixar como .rtf** gera o mesmo conteúdo com a terminação antiga, caso precise.
+## Aba 2 · Pasta da aula
 
-## Levando para outro computador
+O DaVinci já cria a pasta da aula e a `Assets`. O resto acontece aqui.
 
-É um arquivo só, então qualquer caminho serve: pen drive, e-mail, Drive, ou baixando aqui do repositório (abra o `gerador-tp.html` e clique em **Download raw file**).
+**1 · Escolher pasta da aula** — aponte para a pasta que o DaVinci criou. A permissão fica lembrada; o Chrome pede uma confirmação rápida a cada nova sessão.
 
-Sugestões para o dia a dia:
+**2 · Arraste os arquivos:**
 
-- guarde numa pasta fixa, não em Downloads
-- crie um atalho na área de trabalho, ou abra o arquivo e aperte `Ctrl+D` para deixar nos favoritos do navegador
+| Quadro | Destino |
+|---|---|
+| XML do DaVinci | convertido, em `premiere/` |
+| Projeto de áudio | conteúdo da pasta, em `sonar/` |
+| Fluxo (iCloud) | raiz da pasta, renomeado para `fluxo` |
 
-## Atualizando a ferramenta
+As subpastas nascem sozinhas. Aceita arquivos soltos ou pastas inteiras, inclusive arrastadas direto da rede.
 
-Este repositório é o backup da versão boa. Depois de alterar o arquivo:
+**Áudio exportado é automático.** Ao soltar o projeto de áudio, a página procura dentro de `sonar/` uma pasta com "audio" e "export" no nome e copia os arquivos de dentro dela, soltos, para `Assets/`. O botão **Procurar áudio export** roda essa busca manualmente, se precisar.
 
-1. No GitHub, clique em **Add file → Upload files**.
-2. Arraste o arquivo novo — com o mesmo nome, ele substitui o antigo.
-3. **Commit changes**.
-4. Copie a versão nova para as outras máquinas.
+**Verificação de cópia** — depois de gravar cada arquivo, a página confere se o tamanho bate com o original. Se não bater, ela para e diz qual arquivo saiu incompleto.
+
+### O que a conversão do XML faz
+
+Reescreve o arquivo para o Premiere procurar os vídeos pelo nome que está na timeline do DaVinci (LOC…, RITMO…, TOCA…), acrescentando `.mov`. Também zera o timecode da sequência e corrige `anamorphic`, `fielddominance` e os filtros de motion. O resultado sai com `_corrigido` no fim do nome; o XML original nunca é alterado.
+
+---
+
+## Manutenção
+
+O repositório é o backup da versão boa. Para atualizar: **Add file → Upload files**, arraste o arquivo com o mesmo nome, **Commit changes**. O site atualiza sozinho em cerca de um minuto — use `Ctrl+F5` ao abrir para não ver a versão guardada em cache.

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gerador RTF · Teleprompter Cifra Club</title>
+<title>Pré e Pós-produção · Cifra Club</title>
 <style>
   :root{
     --ink:#17140f;--paper:#f6f2ea;--panel:#fff;--line:#e3ddd0;
@@ -80,18 +80,47 @@
   .section-head{display:flex;align-items:baseline;justify-content:space-between;margin:6px 0 12px;}
   .section-head h2{margin:0;font-size:1.05rem;}
   .section-head .meta{color:var(--muted);font-size:0.83rem;}
+
+  /* ---- abas principais ---- */
+  .tabs.main{margin:0 0 20px;border-bottom:2px solid var(--ink);}
+  .mtab{padding:10px 20px;border:1px solid var(--line);border-bottom:none;border-radius:9px 9px 0 0;background:var(--panel);cursor:pointer;font-weight:600;font-size:0.92rem;color:var(--muted);position:relative;top:1px;}
+  .mtab.active{background:var(--ink);color:var(--on-ink);border-color:var(--ink);}
+  .main-tab{display:none;}
+  .main-tab.active{display:block;}
+  /* ---- areas de arrastar ---- */
+  .dropzone{border:2px dashed var(--line);border-radius:11px;background:var(--panel);padding:34px 22px;text-align:center;cursor:pointer;margin:16px 0;}
+  .dropzone:hover,.dropzone.hover{border-color:var(--amber);background:var(--amber-soft);}
+  .dropzone.small{padding:18px 16px;margin:0;text-align:left;}
+  .dz-icon{font-size:2rem;line-height:1;margin-bottom:10px;}
+  .dz-title{font-weight:700;font-size:0.95rem;}
+  .dz-sub{color:var(--muted);font-size:0.82rem;margin-top:4px;}
+  .dz-sub code,.howto code{background:var(--amber-soft);border-radius:4px;padding:1px 6px;font-family:'Consolas',monospace;font-size:0.95em;}
+  .zones{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px;}
+  @media(max-width:760px){.zones{grid-template-columns:1fr;}}
+  .folderbar{display:flex;gap:11px;align-items:center;flex-wrap:wrap;margin:16px 0;}
+  .folder-name{font-family:'Consolas',monospace;font-size:0.85rem;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:7px 12px;}
+  .folder-name.ativa{color:var(--ok);border-color:var(--ok);}
+  .zbtn{margin-top:9px;}
+  .chk{display:flex;align-items:center;gap:8px;font-size:0.86rem;color:var(--muted);margin-top:4px;cursor:pointer;}
 </style>
 </head>
 <body>
 <header>
   <div>
-    <h1>Gerador de RTF · Teleprompter Cifra Club</h1>
-    <div class="sub">Monta o roteiro por cena → baixa o .tpp → abre no Teleprompter Pro. Tudo no navegador, sem limite de uso.</div>
+    <h1>Pré e Pós-produção · Cifra Club</h1>
+    <div class="sub">Roteiro e arquivo do Teleprompter, conversão do XML e organização da pasta da aula.</div>
   </div>
   <button class="mini theme-toggle" id="btnTema" onclick="alternarTema()">🌙 Escuro</button>
 </header>
 
 <div class="wrap">
+
+  <div class="tabs main">
+    <div class="mtab active" data-main="tp" onclick="switchMain('tp')">Roteiro &amp; TP</div>
+    <div class="mtab" data-main="pasta" onclick="switchMain('pasta')">Pasta da aula</div>
+  </div>
+
+<div class="main-tab active" id="main-tp">
   <div class="howto">
     <b>Como escrever:</b> clique nos botões de cena para inserir o rótulo já numerado, e escreva o texto embaixo. Só LOC e ACORDES entram no Teleprompter; as outras cenas entram só na lista do fluxograma.
     <pre>LOC 01
@@ -164,6 +193,8 @@ Texto da segunda locução...</pre>
         <span class="copied" id="tppOk" style="display:none">✓ baixado</span>
         <button class="btn ghost" onclick="baixarArquivo('rtf')">Baixar como .rtf</button>
         <span class="copied" id="rtfOk" style="display:none">✓ baixado</span>
+        <button class="btn ghost" onclick="salvarTpNaPasta()">Salvar na pasta…</button>
+        <span class="copied" id="tpPastaOk" style="display:none">✓ salvo</span>
       </div>
     </div>
 
@@ -177,7 +208,42 @@ Texto da segunda locução...</pre>
       <div class="hint">Cola direto no documento: já vai com fundo #efefef, Courier New 11 e borda fina preta.</div>
     </div>
   </div>
-</div>
+</div><!-- fim main-tp -->
+
+<div class="main-tab" id="main-pasta">
+  <div class="howto">
+    <b>Como funciona:</b> escolha primeiro a pasta que o DaVinci criou (a do nome da timeline). Depois arraste cada coisa para o quadro correspondente — a conversão do XML acontece aqui mesmo. A página só enxerga a pasta que você escolher.
+  </div>
+  <div class="folderbar">
+    <button class="btn" onclick="escolherPastaAula()">1 · Escolher pasta da aula</button>
+    <button class="btn ghost" onclick="importarAudioExport(false)">Procurar áudio export</button>
+    <button class="btn ghost" onclick="limparPasta()">Limpar</button>
+    <span class="folder-name" id="pastaAulaNome">nenhuma pasta escolhida</span>
+  </div>
+  <div id="pastaStatus"></div>
+
+  <div class="step-label" style="margin-top:18px">2 · Arraste os arquivos</div>
+  <div class="zones">
+    <div class="dropzone small" id="dzXml">
+      <div class="dz-title">XML do DaVinci</div>
+      <div class="dz-sub">converte e salva em <code>premiere/</code></div>
+    </div>
+    <div class="dropzone small" id="dzSonar">
+      <div class="dz-title">Projeto de áudio</div>
+      <div class="dz-sub">o conteúdo da pasta vai para <code>sonar/</code>, sem a pasta de fora</div>
+      <button class="mini zbtn" onclick="event.stopPropagation();origemSonar()">Escolher pasta…</button>
+    </div>
+    <div class="dropzone small" id="dzFluxo">
+      <div class="dz-title">Fluxo (iCloud)</div>
+      <div class="dz-sub">renomeia para <code>fluxo</code> e salva na raiz</div>
+    </div>
+  </div>
+
+  <div class="howto" style="margin-top:20px">
+    <b>O que a conversão do XML faz:</b> reescreve o arquivo para o Premiere procurar os vídeos pelo nome que está na timeline do DaVinci (LOC…, RITMO…, TOCA…). Também zera o timecode da sequência e corrige motion, anamorphic e field dominance. O arquivo sai com <code>_corrigido</code> no fim do nome.
+  </div>
+</div><!-- fim main-pasta -->
+</div><!-- fim wrap -->
 
 <script>
 /* ---------- tema claro / escuro ---------- */
@@ -373,6 +439,8 @@ function processar(){
     st.innerHTML=`<div class="status ok">✓ ${exportaveis.length} cenas prontas (${locs.length} LOC + ${acs.length} ACORDES).</div>`;
   }
 
+  st.innerHTML+=conferencia(raw,exportaveis,scenes);
+
   const counts={};
   scenes.forEach(s=>counts[s.type]=(counts[s.type]||0)+1);
   const c=document.getElementById('counts'); c.innerHTML='';
@@ -385,6 +453,47 @@ function processar(){
   renderFlux();
 }
 
+/* ================= conferencia de integridade ================= */
+/* le de volta o RTF gerado e conta os caracteres de fala que ficaram nele */
+function contarTextoRtf(){
+  const rtf=buildRtf();
+  let n=0;
+  rtf.split('\n').forEach(l=>{
+    if(!l.startsWith('\\pard '))return;
+    let t=l.slice(6);
+    if(!t.endsWith('\\par'))return;
+    t=t.slice(0,-4);
+    if(t.startsWith('{\\b '))return;                 /* rotulo da cena */
+    t=t.replace(/\\u\d+\?/g,'x').replace(/\\([\\{}])/g,'$1');  /* desfaz os escapes */
+    n+=t.length;
+  });
+  return n;
+}
+function conferencia(raw,exportaveis,scenes){
+  const dots=parseInt(document.getElementById('numDots').value)||0;
+  const noRoteiro=exportaveis.reduce((a,s)=>a+s.text.join('').length,0);
+  const gravado=contarTextoRtf()-dots*2;             /* tira os pontos de respiro */
+  const foraTp=scenes.filter(s=>s.type!=='LOC'&&s.type!=='ACORDES')
+                     .reduce((a,s)=>a+s.text.join('').length,0);
+  let orfao=0;
+  for(const l of raw.split(/\r?\n/)){
+    if(normLabel(l.trim()))break;
+    orfao+=l.trim().length;
+  }
+  let out='';
+  if(gravado===noRoteiro){
+    out+='<div class="status ok">\u2713 Confer\u00eancia: '+noRoteiro+' caracteres de fala no roteiro colado, '+gravado+' no arquivo do TP. Bateu.</div>';
+  } else {
+    out+='<div class="status err">\u26a0 Confer\u00eancia falhou: '+noRoteiro+' caracteres no roteiro e '+gravado+' no arquivo. N\u00e3o use este arquivo e me avise.</div>';
+  }
+  if(orfao){
+    out+='<div class="status err">\u26a0 '+orfao+' caracteres aparecem antes da primeira cena e n\u00e3o entram em lugar nenhum. Coloque um r\u00f3tulo (ex: LOC 01) antes desse texto.</div>';
+  }
+  if(foraTp){
+    out+='<div class="status warn">'+foraTp+' caracteres est\u00e3o em cenas que n\u00e3o v\u00e3o pro TP (RITMO, TAB, TOCA\u2026). Se for fala, troque o r\u00f3tulo para LOC ou ACORDES.</div>';
+  }
+  return out;
+}
 function renderPreview(){
   const dots=parseInt(document.getElementById('numDots').value)||0;
   const pv=document.getElementById('tpPreview');
@@ -535,6 +644,365 @@ ACORDES 02
 A música fica se repetindo, mas você já aprendeu tudo!`);
   processar();
 }
+
+/* ================= abas principais ================= */
+function switchMain(t){
+  document.querySelectorAll('.mtab').forEach(el=>el.classList.toggle('active',el.dataset.main===t));
+  document.querySelectorAll('.main-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('main-'+t).classList.add('active');
+}
+
+/* ================= conversao do XML (nativa, sem Python) ================= */
+const ATTRS_VIDEO={"TL.SQTrackShy":"0","TL.SQTrackExpandedHeight":"25","TL.SQTrackExpanded":"0","MZ.TrackTargeted":"1"};
+const ATTRS_AUDIO={"TL.SQTrackAudioKeyframeStyle":"0","TL.SQTrackExpandedHeight":"25","PannerCurrentValue":"0.5","PannerIsInverted":"true","premiereTrackType":"Stereo"};
+const filho=(el,tag)=>{ for(const c of el.children){ if(c.tagName===tag)return c; } return null; };
+
+function converterXml(texto){
+  const doc=new DOMParser().parseFromString(texto,'application/xml');
+  if(doc.getElementsByTagName('parsererror').length) throw new Error('XML inv\u00e1lido ou corrompido.');
+  const root=doc.documentElement;
+
+  /* 1 - zera o timecode da sequencia */
+  const seq=filho(root,'sequence');
+  if(seq){
+    const tc=filho(seq,'timecode');
+    if(tc){
+      const st=filho(tc,'string'); if(st)st.textContent='00:00:00:00';
+      const fr=filho(tc,'frame'); if(fr)fr.textContent='0';
+    }
+  }
+
+  /* 2 - corrige cada clipitem */
+  const clips=Array.from(doc.getElementsByTagName('clipitem'));
+  clips.forEach(ci=>{
+    let ana=filho(ci,'anamorphic');
+    if(!ana){ana=doc.createElement('anamorphic');ci.appendChild(ana);}
+    ana.textContent='FALSE';
+
+    let fd=filho(ci,'fielddominance');
+    if(!fd){fd=doc.createElement('fielddominance');ci.appendChild(fd);}
+    fd.textContent='none';
+
+    const nomeEl=filho(ci,'name'), fileEl=filho(ci,'file');
+    if(fileEl && nomeEl && nomeEl.textContent && nomeEl.textContent.trim()){
+      let alvo=nomeEl.textContent.trim();
+      if(!alvo.toLowerCase().endsWith('.mov')){
+        alvo = alvo.includes('.') ? alvo.replace(/\.[^.]*$/,'.mov') : alvo+'.mov';
+      }
+      const fn=filho(fileEl,'name'); if(fn)fn.textContent=alvo;
+      const pu=filho(fileEl,'pathurl'); if(pu)pu.textContent='file://localhost/'+alvo;
+    }
+
+    const filtros=filho(ci,'filters');
+    if(filtros){
+      Array.from(filtros.getElementsByTagName('effect')).forEach(ef=>{
+        const n=filho(ef,'name'), id=filho(ef,'effectid');
+        if(n && n.textContent && /sizing|transform/i.test(n.textContent)){
+          if(id)id.textContent='basic-motion';
+          n.textContent='Basic Motion';
+        }
+      });
+    }
+
+    if(!filho(ci,'transform')){
+      const t=doc.createElement('transform');
+      [['forward','true'],['motion','true'],['stretch','false']].forEach(([tag,val])=>{
+        const e=doc.createElement(tag); e.textContent=val; t.appendChild(e);
+      });
+      ci.appendChild(t);
+    }
+  });
+
+  /* 3 - atributos das tracks */
+  Array.from(doc.getElementsByTagName('track')).forEach(tr=>{
+    const attrs = tr.getElementsByTagName('channelcount').length ? ATTRS_AUDIO : ATTRS_VIDEO;
+    Object.keys(attrs).forEach(k=>tr.setAttribute(k,attrs[k]));
+  });
+
+  root.setAttribute('version','5');
+  const corpo=new XMLSerializer().serializeToString(doc).replace(/^\s*<\?xml[^>]*\?>\s*/i,'');
+  return '<?xml version="1.0" encoding="UTF-8"?>\n'+corpo;
+}
+function nomeConvertido(nomeOriginal){
+  return nomeOriginal.replace(/\.xml$/i,'')+'_corrigido.xml';
+}
+
+/* ================= acesso a pastas ================= */
+const TEM_FS = typeof window.showDirectoryPicker === 'function';
+let pastaAula=null, pastaTP=null;
+
+function idbAbrir(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open('cifra-pastas',1);
+    r.onupgradeneeded=()=>r.result.createObjectStore('h');
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function guardar(chave,valor){
+  try{
+    const db=await idbAbrir();
+    await new Promise((res,rej)=>{
+      const tx=db.transaction('h','readwrite');
+      tx.objectStore('h').put(valor,chave);
+      tx.oncomplete=res; tx.onerror=()=>rej(tx.error);
+    });
+  }catch(e){}
+}
+async function apagarGuardado(chave){
+  try{
+    const db=await idbAbrir();
+    await new Promise(res=>{
+      const tx=db.transaction('h','readwrite');
+      tx.objectStore('h').delete(chave);
+      tx.oncomplete=res; tx.onerror=res;
+    });
+  }catch(e){}
+}
+async function recuperar(chave){
+  try{
+    const db=await idbAbrir();
+    return await new Promise(res=>{
+      const tx=db.transaction('h','readonly');
+      const rq=tx.objectStore('h').get(chave);
+      rq.onsuccess=()=>res(rq.result||null);
+      rq.onerror=()=>res(null);
+    });
+  }catch(e){ return null; }
+}
+async function temPermissao(h,pedir){
+  if(!h)return false;
+  const opt={mode:'readwrite'};
+  try{
+    if(await h.queryPermission(opt)==='granted')return true;
+    if(pedir && await h.requestPermission(opt)==='granted')return true;
+  }catch(e){}
+  return false;
+}
+function msg(id,tipo,texto){
+  const el=document.getElementById(id);
+  if(el)el.innerHTML='<div class="status '+tipo+'">'+escapeHtml(texto)+'</div>';
+}
+function explicarErro(e){
+  const n=e&&e.name;
+  if(n==='NotFoundError')return 'N\u00e3o consegui ler a origem. Isso costuma acontecer ao arrastar de uma pasta da rede ou do iCloud: use o bot\u00e3o "Escolher pasta\u2026" da pr\u00f3pria \u00e1rea, ou copie o item para o PC antes.';
+  if(n==='NotAllowedError')return 'Permiss\u00e3o negada. Clique em "Escolher pasta da aula" para liberar o acesso.';
+  if(n==='SecurityError')return 'O navegador bloqueou o acesso. Confira se a p\u00e1gina foi aberta pelo link do site, no Chrome ou Edge.';
+  return 'Erro: '+((e&&e.message)?e.message:e);
+}
+function marcarPastaAula(){
+  const el=document.getElementById('pastaAulaNome');
+  if(pastaAula){ el.textContent=pastaAula.name; el.classList.add('ativa'); }
+  else { el.textContent='nenhuma pasta escolhida'; el.classList.remove('ativa'); }
+}
+async function escolherPastaAula(){
+  if(!TEM_FS){ msg('pastaStatus','err','Este recurso precisa do Chrome ou Edge, com a p\u00e1gina aberta pelo link do site.'); return; }
+  try{
+    pastaAula=await window.showDirectoryPicker({mode:'readwrite',id:'pastaAula'});
+    await guardar('pastaAula',pastaAula);
+    marcarPastaAula();
+    msg('pastaStatus','ok','Pasta conectada: '+pastaAula.name);
+  }catch(e){ if(e.name!=='AbortError')msg('pastaStatus','err',explicarErro(e)); }
+}
+async function garantirPastaAula(statusId){
+  statusId=statusId||'pastaStatus';
+  if(!TEM_FS){ msg(statusId,'err','Este recurso precisa do Chrome ou Edge, com a p\u00e1gina aberta pelo link do site.'); return false; }
+  if(!pastaAula){ msg(statusId,'warn','Escolha a pasta da aula primeiro, na aba "Pasta da aula".'); return false; }
+  if(!(await temPermissao(pastaAula,true))){ msg(statusId,'warn','Permiss\u00e3o da pasta n\u00e3o liberada. Clique em "Escolher pasta da aula" de novo.'); return false; }
+  return true;
+}
+async function subpasta(caminho){
+  let dir=pastaAula;
+  for(const parte of caminho){ dir=await dir.getDirectoryHandle(parte,{create:true}); }
+  return dir;
+}
+async function gravar(dir,nome,conteudo){
+  const fh=await dir.getFileHandle(nome,{create:true});
+  const w=await fh.createWritable();
+  await w.write(conteudo);
+  await w.close();
+  /* confere se chegou inteiro */
+  if(conteudo && typeof conteudo.size==='number'){
+    const escrito=await fh.getFile();
+    if(escrito.size!==conteudo.size){
+      throw new Error('"'+nome+'" foi copiado incompleto ('+escrito.size+' de '+conteudo.size+' bytes). Repita a c\u00f3pia deste item.');
+    }
+  }
+}
+/* copia so o conteudo da pasta arrastada, ignorando o nome dela */
+async function copiarConteudo(handle,destino){
+  if(handle.kind==='file'){ await gravar(destino,handle.name,await handle.getFile()); return 1; }
+  let n=0;
+  for await (const filho of handle.values()){ n+=await copiarEntrada(filho,destino); }
+  return n;
+}
+/* varre tudo e joga so os arquivos, soltos, no destino */
+async function copiarSoArquivos(handle,destino){
+  if(handle.kind==='file'){ await gravar(destino,handle.name,await handle.getFile()); return 1; }
+  let n=0;
+  for await (const filho of handle.values()){ n+=await copiarSoArquivos(filho,destino); }
+  return n;
+}
+/* copia recursiva: aceita arquivo ou pasta inteira */
+async function copiarEntrada(handle,destino){
+  if(handle.kind==='file'){
+    await gravar(destino,handle.name,await handle.getFile());
+    return 1;
+  }
+  const nova=await destino.getDirectoryHandle(handle.name,{create:true});
+  let n=0;
+  for await (const filho of handle.values()){ n+=await copiarEntrada(filho,nova); }
+  return n;
+}
+
+/* ================= achar a pasta de audio export sozinho ================= */
+function normalizaNome(t){ return t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+async function acharPastas(dir,teste,caminho,achados,prof){
+  if(prof>6)return;
+  for await (const filho of dir.values()){
+    if(filho.kind!=='directory')continue;
+    const nome=normalizaNome(filho.name);
+    if(prof===0 && (nome==='assets'||nome==='premiere'))continue;
+    const trilha=caminho.concat(filho.name);
+    if(teste(nome)) achados.push({handle:filho,caminho:trilha.join('/')});
+    else await acharPastas(filho,teste,trilha,achados,prof+1);
+  }
+}
+async function importarAudioExport(silencioso,prefixo){
+  if(!(await garantirPastaAula()))return;
+  try{
+    let base=pastaAula, ondeBusquei='a pasta da aula';
+    try{ base=await pastaAula.getDirectoryHandle('sonar'); ondeBusquei='sonar/'; }catch(e){}
+    let achados=[];
+    await acharPastas(base,n=>n.includes('export')&&n.includes('audio'),[],achados,0);
+    if(!achados.length) await acharPastas(base,n=>n.includes('export'),[],achados,0);
+    if(!achados.length){
+      if(!silencioso) msg('pastaStatus','warn','N\u00e3o achei nenhuma pasta com "export" no nome dentro de '+ondeBusquei+'. Arraste a pasta no quadro "\u00c1udios exportados".');
+      return;
+    }
+    const destino=await subpasta(['Assets']);
+    let n=0;
+    for(const a of achados){ n+=await copiarSoArquivos(a.handle,destino); }
+    const nomes=achados.map(a=>a.caminho).join(', ');
+    msg('pastaStatus','ok',(prefixo?prefixo+' ':'')+n+(n===1?' arquivo de ':' arquivos de ')+nomes+' salvo(s) em Assets/.');
+  }catch(e){ msg('pastaStatus','err',explicarErro(e)); }
+}
+
+/* ================= zonas de arrastar ================= */
+function ligarZona(idZona,destino,rotulo,opts){
+  opts=opts||{};
+  const dz=document.getElementById(idZona);
+  if(!dz)return;
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('hover');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('hover'));
+  dz.addEventListener('drop',e=>{
+    e.preventDefault();dz.classList.remove('hover');
+    const arquivos=Array.from(e.dataTransfer.files||[]);
+    const itens=Array.from(e.dataTransfer.items||[]).filter(i=>i.kind==='file');
+    if(itens.length && typeof itens[0].getAsFileSystemHandle==='function'){
+      Promise.all(itens.map(i=>i.getAsFileSystemHandle().catch(()=>null)))
+        .then(hs=>processarArquivos(hs.filter(Boolean),arquivos,destino,rotulo,opts));
+    } else {
+      processarArquivos(null,arquivos,destino,rotulo,opts);
+    }
+  });
+  dz.addEventListener('click',ev=>{
+    if(ev.target.closest('.zbtn'))return;
+    const inp=document.createElement('input');
+    inp.type='file'; inp.multiple=true;
+    if(opts.aceita)inp.accept=opts.aceita;
+    inp.onchange=e=>{ if(e.target.files.length)processarArquivos(null,Array.from(e.target.files),destino,rotulo,opts); };
+    inp.click();
+  });
+}
+async function escolherOrigemPasta(destino,rotulo,opts){
+  opts=opts||{};
+  if(!TEM_FS){ msg(opts.statusId||'pastaStatus','err','Este recurso precisa do Chrome ou Edge.'); return; }
+  try{
+    const origem=await window.showDirectoryPicker({mode:'read'});
+    processarArquivos([origem],null,destino,rotulo,opts);
+  }catch(e){ if(e.name!=='AbortError')msg(opts.statusId||'pastaStatus','err',explicarErro(e)); }
+}
+
+async function processarArquivos(handles,arquivos,destino,rotulo,opts){
+  const sid=opts.statusId||'pastaStatus';
+  if(!(await garantirPastaAula(sid)))return;
+  try{
+    const dir=await subpasta(destino);
+    let n=0;
+    const lista = (handles&&handles.length) ? handles : (arquivos||[]);
+    for(const item of lista){
+      const ehHandle = item && item.kind!==undefined;
+      if(opts.xml){
+        const f = ehHandle ? await item.getFile() : item;
+        if(!/\.xml$/i.test(f.name))continue;
+        const saida=converterXml(await f.text());
+        await gravar(dir,nomeConvertido(f.name),new Blob([saida],{type:'application/xml'}));
+        n++;
+      } else if(opts.renomear){
+        const f = ehHandle ? await item.getFile() : item;
+        const i=f.name.lastIndexOf('.');
+        await gravar(dir,opts.renomear+(i>0?f.name.slice(i):''),f);
+        n++;
+      } else if(ehHandle){
+        if(opts.soArquivos)      n+=await copiarSoArquivos(item,dir);
+        else if(opts.conteudo)   n+=await copiarConteudo(item,dir);
+        else                     n+=await copiarEntrada(item,dir);
+      } else {
+        await gravar(dir,item.name,item);
+        n++;
+      }
+    }
+    if(!n){ msg(sid,'warn','Nada foi copiado. Confira se o arquivo \u00e9 do tipo esperado.'); return; }
+    const resumo=n+(n===1?' item salvo em ':' itens salvos em ')+rotulo+'.';
+    msg(sid,'ok',resumo);
+    if(opts.depois) await opts.depois(true,resumo);
+  }catch(e){ msg(sid,'err',explicarErro(e)); }
+}
+
+/* salvar o .tpp direto numa pasta fixa */
+async function salvarTpNaPasta(){
+  if(!TEM_FS){ alert('Este recurso precisa do Chrome ou Edge, com a p\u00e1gina aberta pelo link do site.'); return; }
+  try{
+    if(!pastaTP || !(await temPermissao(pastaTP,true))){
+      pastaTP=await window.showDirectoryPicker({mode:'readwrite',id:'pastaTP'});
+      await guardar('pastaTP',pastaTP);
+    }
+    const slug=slugifyAula(document.getElementById('nomeAula').value);
+    await gravar(pastaTP,slug+'.tpp',new Blob([buildRtf()],{type:'application/octet-stream'}));
+    flash('tpPastaOk');
+  }catch(e){ if(e.name!=='AbortError')alert('N\u00e3o consegui salvar: '+e.message); }
+}
+
+/* ================= limpar por aba ================= */
+async function limparPasta(){
+  pastaAula=null;
+  await apagarGuardado('pastaAula');
+  marcarPastaAula();
+  document.getElementById('pastaStatus').innerHTML='';
+}
+
+/* ================= atalhos das zonas ================= */
+const origemSonar =()=>escolherOrigemPasta(['sonar'],'sonar/',{conteudo:true});
+
+/* ================= inicializacao ================= */
+ligarZona('dzXml',['premiere'],'premiere/',{xml:true,aceita:'.xml'});
+ligarZona('dzSonar',['sonar'],'sonar/',{conteudo:true,depois:importarAudioExport});
+ligarZona('dzFluxo',[],'na raiz da pasta, como "fluxo"',{renomear:'fluxo'});
+
+(async function(){
+  if(!TEM_FS)return;
+  const a=await recuperar('pastaAula');
+  if(a){
+    pastaAula=a; marcarPastaAula();
+    if(!(await temPermissao(a,false))){
+      msg('pastaStatus','warn','Pasta lembrada: '+a.name+'. Clique em "Escolher pasta da aula" para liberar o acesso nesta sess\u00e3o.');
+    }
+  }
+  const t=await recuperar('pastaTP');
+  if(t)pastaTP=t;
+})();
+
 </script>
 </body>
 </html>
