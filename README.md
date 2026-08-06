@@ -41,7 +41,11 @@ Ela também alerta quando há texto **antes da primeira cena**, que não entra e
 
 **Arquivo do TP (.tpp)** — só as cenas LOC e ACORDES, com as LOCs primeiro. Cada rótulo marcado como `<> LOC 01`. Os pontinhos das pontas são o respiro de rolagem, ajustável no campo **Pontos**.
 
-**Lista de cenas** — todas as cenas, na ordem `LOC → ACORDES → RITMO → DEDIL → TAB → TOCA → TOCA SOLO`, com linha em branco entre os grupos. A cópia já vai formatada para o documento: fundo `#efefef`, Courier New 11, borda fina preta, centralizado.
+**Lista de cenas** — todas as cenas, na ordem `LOC → ACORDES → RITMO → DEDIL → TAB → TOCA → TOCA SOLO`, com linha em branco entre os grupos.
+
+A lista sai em **duas colunas de 14 linhas**, no formato da tabela do documento: preenche a primeira coluna de cima a baixo e continua na segunda, que sempre começa numa cena — se a virada cair numa linha de separação, ela é descartada. Cada coluna tem seu próprio botão de copiar, para você colar uma de cada vez. Se as cenas passarem de 28 linhas, a página avisa em vermelho quantas sobraram.
+
+A cópia já vai formatada: fundo `#efefef`, Courier New 11, borda fina preta, centralizado.
 
 ### Nomes dos arquivos
 
@@ -50,7 +54,7 @@ Preenchendo o nome da aula, a página monta os dois nomes do padrão:
 - **Nome pro TP e pro Fluxo** — `Aula 2.6. Aplicando os intervalos` vira `2.6_aplicando_os_intervalos`
 - **Nome pro Fluxo** — a aula como você digitou
 
-O `.tpp` baixado usa o primeiro, com a terminação acrescentada.
+O `.tpp` baixado usa o primeiro, com a terminação acrescentada. O conteúdo é RTF por dentro — só o nome termina em `.tpp`, que é o que o Teleprompter Pro espera.
 
 ---
 

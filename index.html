@@ -76,6 +76,9 @@
   /* tabela do fluxo — espelha o formato colado no documento */
   table.flux-table{border-collapse:collapse;border:1px solid #000;}
   table.flux-table td{font-family:'Courier New',monospace;font-size:11pt;text-align:center;background-color:#efefef;border:1px solid #000;padding:4pt 26pt;color:#000;}
+  .fluxcols{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start;}
+  .fluxcol{}
+  .colhead{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-weight:700;margin-bottom:7px;}
   .copied{color:var(--ok);font-size:0.82rem;font-weight:600;}
   .section-head{display:flex;align-items:baseline;justify-content:space-between;margin:6px 0 12px;}
   .section-head h2{margin:0;font-size:1.05rem;}
@@ -189,10 +192,8 @@ Texto da segunda locução...</pre>
       <div class="section-head"><h2>Prévia do arquivo</h2><span class="meta" id="tpMeta"></span></div>
       <div class="preview" id="tpPreview"></div>
       <div class="controls" style="margin-top:14px">
-        <button class="btn" onclick="baixarArquivo('tpp')">Baixar .tpp pro Teleprompter</button>
+        <button class="btn" onclick="baixarTpp()">Baixar .tpp pro Teleprompter</button>
         <span class="copied" id="tppOk" style="display:none">✓ baixado</span>
-        <button class="btn ghost" onclick="baixarArquivo('rtf')">Baixar como .rtf</button>
-        <span class="copied" id="rtfOk" style="display:none">✓ baixado</span>
         <button class="btn ghost" onclick="salvarTpNaPasta()">Salvar na pasta…</button>
         <span class="copied" id="tpPastaOk" style="display:none">✓ salvo</span>
       </div>
@@ -200,12 +201,26 @@ Texto da segunda locução...</pre>
 
     <div class="panel-tab" id="tab-flux">
       <div class="section-head"><h2>Lista de cenas</h2><span class="meta" id="fluxMeta"></span></div>
-      <table class="flux-table"><tbody id="fluxBody"></tbody></table>
-      <div class="controls" style="margin-top:12px">
-        <button class="btn" onclick="copiarFlux()">Copiar lista de cenas</button>
-        <span class="copied" id="fluxOk" style="display:none">✓ copiado</span>
+      <div id="fluxAviso"></div>
+      <div class="fluxcols">
+        <div class="fluxcol">
+          <div class="colhead">Coluna 1</div>
+          <table class="flux-table"><tbody id="fluxBody1"></tbody></table>
+          <div class="controls" style="margin-top:10px">
+            <button class="btn" onclick="copiarColuna(0)">Copiar coluna 1</button>
+            <span class="copied" id="fluxOk1" style="display:none">✓ copiado</span>
+          </div>
+        </div>
+        <div class="fluxcol">
+          <div class="colhead">Coluna 2</div>
+          <table class="flux-table"><tbody id="fluxBody2"></tbody></table>
+          <div class="controls" style="margin-top:10px">
+            <button class="btn" onclick="copiarColuna(1)">Copiar coluna 2</button>
+            <span class="copied" id="fluxOk2" style="display:none">✓ copiado</span>
+          </div>
+        </div>
       </div>
-      <div class="hint">Cola direto no documento: já vai com fundo #efefef, Courier New 11 e borda fina preta.</div>
+      <div class="hint">Cada coluna tem 14 linhas. Cola direto no documento: fundo #efefef, Courier New 11 e borda fina preta.</div>
     </div>
   </div>
 </div><!-- fim main-tp -->
@@ -517,10 +532,29 @@ function linhasFluxo(){
   });
   return out;
 }
+/* o documento tem 14 linhas e 2 colunas: preenche a 1a coluna e depois a 2a */
+const LINHAS_FLUXO=14, COLUNAS_FLUXO=2;
+function colunasFluxo(){
+  const itens=linhasFluxo();
+  const col1=itens.slice(0,LINHAS_FLUXO);
+  let resto=itens.slice(LINHAS_FLUXO);
+  while(resto.length && resto[0]==='')resto.shift();   /* a coluna 2 comeca numa cena, nao numa linha vazia */
+  const col2=resto.slice(0,LINHAS_FLUXO);
+  const cols=[col1,col2];
+  cols.forEach(c=>{ while(c.length<LINHAS_FLUXO)c.push(''); });
+  return {cols, excedente: Math.max(0, resto.length-LINHAS_FLUXO)};
+}
 function renderFlux(){
-  document.getElementById('fluxBody').innerHTML=linhasFluxo()
-    .map(l=>`<tr><td>${l===''?'&nbsp;':escapeHtml(l)}</td></tr>`).join('');
-  document.getElementById('fluxMeta').textContent=`${STATE.flux.length} cenas · ordem do fluxograma`;
+  const g=colunasFluxo();
+  g.cols.forEach((col,i)=>{
+    document.getElementById('fluxBody'+(i+1)).innerHTML=
+      col.map(c=>`<tr><td>${c===''?'&nbsp;':escapeHtml(c)}</td></tr>`).join('');
+  });
+  document.getElementById('fluxMeta').textContent=`${STATE.flux.length} cenas \u00b7 ${LINHAS_FLUXO} linhas por coluna`;
+  const av=document.getElementById('fluxAviso');
+  av.innerHTML = g.excedente
+    ? `<div class="status err">\u26a0 N\u00e3o coube: ${g.excedente} linha(s) sobraram do espa\u00e7o de ${LINHAS_FLUXO}\u00d7${COLUNAS_FLUXO}. Reduza o n\u00famero de cenas ou acrescente linhas na tabela do documento.</div>`
+    : '';
 }
 function switchTab(t){
   document.querySelectorAll('.tab').forEach(el=>el.classList.toggle('active',el.dataset.tab===t));
@@ -576,27 +610,26 @@ function copiarCampo(inputId,okId){
   navigator.clipboard.writeText(el.value).then(()=>flash(okId));
 }
 
-/* mesmo conteudo (RTF) — muda so a terminacao do nome do arquivo */
-function baixarArquivo(ext){
-  const nome=document.getElementById('nomeAula').value;
-  const slug=slugifyAula(nome);
+/* o conteudo e RTF por dentro; so o nome termina em .tpp */
+function baixarTpp(){
+  const slug=slugifyAula(document.getElementById('nomeAula').value);
   const blob=new Blob([buildRtf()],{type:'application/octet-stream'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download=`${slug}.${ext}`;
+  a.href=url;a.download=`${slug}.tpp`;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),2000);
-  flash(ext==='tpp'?'tppOk':'rtfOk');
+  flash('tppOk');
 }
-/* copia a lista já formatada: #efefef, Courier New 11, borda em negrito */
-function copiarFlux(){
-  const items=linhasFluxo();
-  const text=items.join('\n');
+/* copia uma coluna ja formatada: #efefef, Courier New 11, borda fina preta */
+function copiarColuna(indice){
+  const itens=colunasFluxo().cols[indice];
+  const okId='fluxOk'+(indice+1);
+  const text=itens.join('\n');
   const tdStyle="font-family:'Courier New',monospace;font-size:11.0pt;text-align:center;background-color:#efefef;border:1px solid #000000;padding:3pt 24pt;color:#000000;";
   const html='<table style="border-collapse:collapse;border:1px solid #000000;"><tbody>'
-    +items.map(l=>`<tr><td style="${tdStyle}">${l===''?'&nbsp;':escapeHtml(l)}</td></tr>`).join('')
+    +itens.map(c=>`<tr><td style="${tdStyle}">${c===''?'&nbsp;':escapeHtml(c)}</td></tr>`).join('')
     +'</tbody></table>';
-  const okId='fluxOk';
   if(navigator.clipboard && window.ClipboardItem){
     const item=new ClipboardItem({
       'text/plain': new Blob([text],{type:'text/plain'}),
@@ -609,7 +642,7 @@ function copiarFlux(){
     navigator.clipboard.writeText(text).then(()=>flash(okId));
   }
 }
-function flash(id){const el=document.getElementById(id);el.style.display='inline';setTimeout(()=>el.style.display='none',1600);}
+function flash(id){const el=document.getElementById(id);if(!el)return;el.style.display='inline';setTimeout(()=>el.style.display='none',1600);}
 function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 function limpar(){
