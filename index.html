@@ -196,6 +196,8 @@ Texto da segunda locução...</pre>
         <span class="copied" id="tppOk" style="display:none">✓ baixado</span>
         <button class="btn ghost" onclick="salvarTpNaPasta()">Salvar na pasta…</button>
         <span class="copied" id="tpPastaOk" style="display:none">✓ salvo</span>
+        <button class="mini" onclick="salvarTpNaPasta(true)">Trocar pasta</button>
+        <span class="folder-name" id="pastaTPNome">vai perguntar onde salvar</span>
       </div>
     </div>
 
@@ -646,6 +648,7 @@ function flash(id){const el=document.getElementById(id);if(!el)return;el.style.d
 function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 function limpar(){
+  esquecerPastaTP();
   setInput('');
   document.getElementById('nomeAula').value='';
   atualizarNomePreview();
@@ -994,12 +997,25 @@ async function processarArquivos(handles,arquivos,destino,rotulo,opts){
 }
 
 /* salvar o .tpp direto numa pasta fixa */
-async function salvarTpNaPasta(){
+function marcarPastaTP(){
+  const el=document.getElementById('pastaTPNome');
+  if(!el)return;
+  if(pastaTP){ el.textContent=pastaTP.name; el.classList.add('ativa'); }
+  else { el.textContent='vai perguntar onde salvar'; el.classList.remove('ativa'); }
+}
+async function esquecerPastaTP(){
+  pastaTP=null;
+  await apagarGuardado('pastaTP');
+  marcarPastaTP();
+}
+/* trocar=true forca a janela de escolha mesmo que ja exista uma pasta fixada */
+async function salvarTpNaPasta(trocar){
   if(!TEM_FS){ alert('Este recurso precisa do Chrome ou Edge, com a p\u00e1gina aberta pelo link do site.'); return; }
   try{
-    if(!pastaTP || !(await temPermissao(pastaTP,true))){
+    if(trocar || !pastaTP || !(await temPermissao(pastaTP,true))){
       pastaTP=await window.showDirectoryPicker({mode:'readwrite',id:'pastaTP'});
       await guardar('pastaTP',pastaTP);
+      marcarPastaTP();
     }
     const slug=slugifyAula(document.getElementById('nomeAula').value);
     await gravar(pastaTP,slug+'.tpp',new Blob([buildRtf()],{type:'application/octet-stream'}));
@@ -1034,6 +1050,7 @@ ligarZona('dzFluxo',[],'na raiz da pasta, como "fluxo"',{renomear:'fluxo'});
   }
   const t=await recuperar('pastaTP');
   if(t)pastaTP=t;
+  marcarPastaTP();
 })();
 
 </script>

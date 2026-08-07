@@ -58,6 +58,12 @@ O `.tpp` baixado usa o primeiro, com a terminação acrescentada. O conteúdo é
 
 ---
 
+### Salvar o .tpp direto numa pasta
+
+O botão **Salvar na pasta…** grava o arquivo do TP sem passar por Downloads. Na primeira vez ele pergunta onde; depois disso a pasta escolhida fica em uso e aparece o nome dela ao lado.
+
+Para mudar de destino há dois caminhos: o botão **Trocar pasta**, que abre a escolha na hora, e o botão **Limpar**, que solta a pasta — assim a próxima aula começa perguntando de novo.
+
 ## Aba 2 · Pasta da aula
 
 O DaVinci já cria a pasta da aula e a `Assets`. O resto acontece aqui.
