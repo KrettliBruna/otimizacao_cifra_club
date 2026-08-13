@@ -113,6 +113,8 @@
   .etapa.pendente{color:var(--muted);}
   .etapa.feito .ic{color:var(--ok);}
   .etapa.andando .ic{color:var(--amber);}
+  .etapa.fila .ic{color:var(--muted);}
+  .etapa.fila{color:var(--muted);}
   .etapa.erro{color:var(--err);}
   .etapa.erro .det{color:var(--err);margin-left:0;text-align:left;width:100%;}
   .chk{display:flex;align-items:center;gap:8px;font-size:0.86rem;color:var(--muted);margin-top:4px;cursor:pointer;}
@@ -828,12 +830,37 @@ async function temPermissao(h,pedir){
   }catch(e){}
   return false;
 }
+/* ---- fila: copias pesadas rodam uma de cada vez ----
+   disco e rede nao ficam mais rapidos com varias copias juntas; ficam mais lentos.
+   entao as tarefas pesadas entram numa fila e cada uma roda na velocidade cheia.   */
 let jobsAtivos=0;
+const filaPesada=[];
+let filaOcupada=false;
+
+function enfileirar(tarefa){
+  return new Promise(function(resolve){
+    filaPesada.push({tarefa:tarefa,resolve:resolve});
+    atualizarJobs();
+    tocarFila();
+  });
+}
+async function tocarFila(){
+  if(filaOcupada||!filaPesada.length)return;
+  filaOcupada=true;
+  const item=filaPesada.shift();
+  atualizarJobs();
+  try{ item.resolve(await item.tarefa()); }
+  catch(e){ item.resolve(); }
+  finally{ filaOcupada=false; atualizarJobs(); tocarFila(); }
+}
 function atualizarJobs(){
   const el=document.getElementById('jobsInfo');
   if(!el)return;
-  if(jobsAtivos>0){
-    el.textContent = jobsAtivos===1 ? '1 c\u00f3pia em andamento\u2026' : jobsAtivos+' c\u00f3pias em andamento\u2026';
+  const espera=filaPesada.length;
+  if(jobsAtivos>0||espera>0){
+    let t = jobsAtivos>0 ? 'copiando\u2026' : '';
+    if(espera>0) t += (t?'  ':'') + espera + (espera===1?' na fila':' na fila');
+    el.textContent=t;
     el.style.display='inline-block';
     el.classList.add('ativa');
   } else {
@@ -843,7 +870,7 @@ function atualizarJobs(){
 }
 /* painel: um cartao por aula, com as 4 etapas do processo */
 const ETAPAS=[['premiere','XML \u2192 premiere/'],['sonar','Projeto de \u00e1udio \u2192 sonar/'],['Assets','\u00c1udio exportado \u2192 Assets/'],['fluxo','Fluxo \u2192 raiz']];
-const ICONES={pendente:'\u25cb',andando:'\u25d4',feito:'\u2713',erro:'\u2715'};
+const ICONES={pendente:'\u25cb',fila:'\u22ef',andando:'\u25d4',feito:'\u2713',erro:'\u2715'};
 const painel=new Map();   /* handle da pasta -> {nome, itens} */
 
 function etapa(raiz,chave,estado,detalhe){
@@ -965,33 +992,39 @@ async function acharPastas(dir,teste,caminho,achados,prof){
     else await acharPastas(filho,teste,trilha,achados,prof+1);
   }
 }
-async function importarAudioExport(raiz,silencioso){
+async function importarAudioExport(raiz,silencioso,jaNaFila){
   raiz = raiz || pastaAula;           /* capturado antes de qualquer espera */
+  if(raiz && !jaNaFila) etapa(raiz,'Assets','fila','na fila\u2026');
   if(!(await garantirPasta(raiz)))return;
-  jobsAtivos++; atualizarJobs();
-  etapa(raiz,'Assets','andando','procurando a pasta\u2026');
-  try{
-    let base=raiz, ondeBusquei='a pasta da aula';
-    try{ base=await raiz.getDirectoryHandle('sonar'); ondeBusquei='sonar/'; }catch(e){}
-    let achados=[];
-    await acharPastas(base,n=>n.includes('export')&&n.includes('audio'),[],achados,0);
-    if(!achados.length) await acharPastas(base,n=>n.includes('export'),[],achados,0);
-    if(!achados.length){
-      etapa(raiz,'Assets','erro','n\u00e3o achei pasta com "export" em '+ondeBusquei);
-      return;
-    }
-    const destino=await subpastaDe(raiz,['Assets']);
-    let n=0;
-    for(const a of achados){
-      const plano=[];
-      await planejar(a.handle,destino,'soArquivos',plano);
-      n+=await copiarPlano(plano,function(feitos,total){
-        etapa(raiz,'Assets','andando',feitos+' de '+total+' arquivos');
-      });
-    }
-    etapa(raiz,'Assets','feito',(n===1?'1 arquivo de ':n+' arquivos de ')+achados[0].caminho);
-  }catch(e){ etapa(raiz,'Assets','erro',explicarErro(e)); }
-  finally{ jobsAtivos--; atualizarJobs(); }
+
+  const corpo=async function(){
+    jobsAtivos++; atualizarJobs();
+    etapa(raiz,'Assets','andando','procurando a pasta\u2026');
+    try{
+      let base=raiz, ondeBusquei='a pasta da aula';
+      try{ base=await raiz.getDirectoryHandle('sonar'); ondeBusquei='sonar/'; }catch(e){}
+      let achados=[];
+      await acharPastas(base,n=>n.includes('export')&&n.includes('audio'),[],achados,0);
+      if(!achados.length) await acharPastas(base,n=>n.includes('export'),[],achados,0);
+      if(!achados.length){
+        etapa(raiz,'Assets','erro','n\u00e3o achei pasta com "export" em '+ondeBusquei);
+        return;
+      }
+      const destino=await subpastaDe(raiz,['Assets']);
+      let n=0;
+      for(const a of achados){
+        const plano=[];
+        await planejar(a.handle,destino,'soArquivos',plano);
+        n+=await copiarPlano(plano,function(feitos,total){
+          etapa(raiz,'Assets','andando',feitos+' de '+total+' arquivos');
+        });
+      }
+      etapa(raiz,'Assets','feito',(n===1?'1 arquivo de ':n+' arquivos de ')+achados[0].caminho);
+    }catch(e){ etapa(raiz,'Assets','erro',explicarErro(e)); }
+    finally{ jobsAtivos--; atualizarJobs(); }
+  };
+
+  return jaNaFila ? corpo() : enfileirar(corpo);
 }
 /* ================= zonas de arrastar ================= */
 function ligarZona(idZona,destino,rotulo,opts){
@@ -1032,45 +1065,51 @@ async function escolherOrigemPasta(destino,rotulo,opts){
 async function processarArquivos(handles,arquivos,destino,rotulo,opts){
   const sid=opts.statusId||'pastaStatus';
   const raizJob=pastaAula;            /* capturado antes de qualquer espera */
-  if(!(await garantirPasta(raizJob,sid)))return;
   const passo=opts.etapa||'sonar';
-  jobsAtivos++; atualizarJobs();
-  etapa(raizJob,passo,'andando','preparando\u2026');
-  try{
-    const dir=await subpastaDe(raizJob,destino);
-    let n=0;
-    const lista = (handles&&handles.length) ? handles : (arquivos||[]);
-    for(const item of lista){
-      const ehHandle = item && item.kind!==undefined;
-      if(opts.xml){
-        const f = ehHandle ? await item.getFile() : item;
-        if(!/\.xml$/i.test(f.name))continue;
-        const saida=converterXml(await f.text());
-        await gravar(dir,nomeConvertido(f.name),new Blob([saida],{type:'application/xml'}));
-        n++;
-      } else if(opts.renomear){
-        const f = ehHandle ? await item.getFile() : item;
-        const i=f.name.lastIndexOf('.');
-        await gravar(dir,opts.renomear+(i>0?f.name.slice(i):''),f);
-        n++;
-      } else if(ehHandle){
-        const modo = opts.soArquivos ? 'soArquivos' : (opts.conteudo ? 'conteudo' : 'entrada');
-        const plano=[];
-        etapa(raizJob,passo,'andando','lendo a pasta\u2026');
-        await planejar(item,dir,modo,plano);
-        n+=await copiarPlano(plano,function(feitos,total){
-          etapa(raizJob,passo,'andando',feitos+' de '+total+' arquivos');
-        });
-      } else {
-        await gravar(dir,item.name,item);
-        n++;
+  if(raizJob) etapa(raizJob,passo,opts.pesado?'fila':'andando',opts.pesado?'na fila\u2026':'preparando\u2026');
+  if(!(await garantirPasta(raizJob,sid))){ if(raizJob)etapa(raizJob,passo,'pendente',''); return; }
+
+  const corpo=async function(){
+    jobsAtivos++; atualizarJobs();
+    etapa(raizJob,passo,'andando','preparando\u2026');
+    try{
+      const dir=await subpastaDe(raizJob,destino);
+      let n=0;
+      const lista = (handles&&handles.length) ? handles : (arquivos||[]);
+      for(const item of lista){
+        const ehHandle = item && item.kind!==undefined;
+        if(opts.xml){
+          const f = ehHandle ? await item.getFile() : item;
+          if(!/\.xml$/i.test(f.name))continue;
+          const saida=converterXml(await f.text());
+          await gravar(dir,nomeConvertido(f.name),new Blob([saida],{type:'application/xml'}));
+          n++;
+        } else if(opts.renomear){
+          const f = ehHandle ? await item.getFile() : item;
+          const i=f.name.lastIndexOf('.');
+          await gravar(dir,opts.renomear+(i>0?f.name.slice(i):''),f);
+          n++;
+        } else if(ehHandle){
+          const modo = opts.soArquivos ? 'soArquivos' : (opts.conteudo ? 'conteudo' : 'entrada');
+          const plano=[];
+          etapa(raizJob,passo,'andando','lendo a pasta\u2026');
+          await planejar(item,dir,modo,plano);
+          n+=await copiarPlano(plano,function(feitos,total){
+            etapa(raizJob,passo,'andando',feitos+' de '+total+' arquivos');
+          });
+        } else {
+          await gravar(dir,item.name,item);
+          n++;
+        }
       }
-    }
-    if(!n){ etapa(raizJob,passo,'erro','nada foi copiado \u2014 confira o tipo do arquivo'); return; }
-    etapa(raizJob,passo,'feito',n===1?'1 arquivo':n+' arquivos');
-    if(opts.depois) await opts.depois(raizJob,true);
-  }catch(e){ etapa(raizJob,passo,'erro',explicarErro(e)); }
-  finally{ jobsAtivos--; atualizarJobs(); }
+      if(!n){ etapa(raizJob,passo,'erro','nada foi copiado \u2014 confira o tipo do arquivo'); return; }
+      etapa(raizJob,passo,'feito',n===1?'1 arquivo':n+' arquivos');
+      if(opts.depois) await opts.depois(raizJob,true,true);   /* ja dentro da fila */
+    }catch(e){ etapa(raizJob,passo,'erro',explicarErro(e)); }
+    finally{ jobsAtivos--; atualizarJobs(); }
+  };
+
+  return opts.pesado ? enfileirar(corpo) : corpo();
 }
 
 /* salvar o .tpp direto numa pasta fixa */
@@ -1118,7 +1157,7 @@ const origemSonar =()=>escolherOrigemPasta(['sonar'],'sonar/',{conteudo:true});
 
 /* ================= inicializacao ================= */
 ligarZona('dzXml',['premiere'],'premiere/',{xml:true,aceita:'.xml',etapa:'premiere'});
-ligarZona('dzSonar',['sonar'],'sonar/',{conteudo:true,etapa:'sonar',depois:importarAudioExport});
+ligarZona('dzSonar',['sonar'],'sonar/',{conteudo:true,etapa:'sonar',pesado:true,depois:importarAudioExport});
 ligarZona('dzFluxo',[],'na raiz da pasta, como "fluxo"',{renomear:'fluxo',etapa:'fluxo'});
 
 (async function(){
