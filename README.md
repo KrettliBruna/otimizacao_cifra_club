@@ -82,6 +82,8 @@ As subpastas nascem sozinhas. Aceita arquivos soltos ou pastas inteiras, inclusi
 
 **Áudio exportado é automático.** Ao soltar o projeto de áudio, a página procura dentro de `sonar/` uma pasta com "audio" e "export" no nome e copia os arquivos de dentro dela, soltos, para `Assets/`. O botão **Procurar áudio export** roda essa busca manualmente, se precisar.
 
+**Painel de etapas** — cada aula vira um cartão com as quatro etapas do processo (`premiere`, `sonar`, `Assets`, `fluxo`) e o estado de cada uma: pendente, em andamento com a contagem de arquivos, concluída ou com erro. As aulas ficam lado a lado, e o histórico guarda as seis últimas.
+
 **Várias aulas ao mesmo tempo** — cada tarefa fica presa à pasta que estava escolhida quando você soltou o arquivo. Pode trocar de aula enquanto uma cópia grande ainda roda: ela continua até o fim, no lugar certo, inclusive a busca automática do áudio exportado. O contador ao lado dos botões mostra quantas cópias estão em andamento, e cada linha do histórico diz de qual aula veio.
 
 **Verificação de cópia** — depois de gravar cada arquivo, a página confere se o tamanho bate com o original. Se não bater, ela para e diz qual arquivo saiu incompleto.

@@ -104,6 +104,17 @@
   .folder-name{font-family:'Consolas',monospace;font-size:0.85rem;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:7px 12px;}
   .folder-name.ativa{color:var(--ok);border-color:var(--ok);}
   .zbtn{margin-top:9px;}
+  .painel{display:flex;gap:14px;flex-wrap:wrap;margin-top:16px;}
+  .card-aula{flex:1 1 300px;min-width:270px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px;}
+  .card-nome{font-weight:700;font-size:0.88rem;margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid var(--line);word-break:break-word;}
+  .etapa{display:flex;gap:9px;align-items:baseline;font-size:0.83rem;padding:4px 0;flex-wrap:wrap;}
+  .etapa .ic{width:15px;flex-shrink:0;font-weight:700;}
+  .etapa .det{color:var(--muted);font-size:0.77rem;margin-left:auto;text-align:right;}
+  .etapa.pendente{color:var(--muted);}
+  .etapa.feito .ic{color:var(--ok);}
+  .etapa.andando .ic{color:var(--amber);}
+  .etapa.erro{color:var(--err);}
+  .etapa.erro .det{color:var(--err);margin-left:0;text-align:left;width:100%;}
   .chk{display:flex;align-items:center;gap:8px;font-size:0.86rem;color:var(--muted);margin-top:4px;cursor:pointer;}
 </style>
 </head>
@@ -239,6 +250,7 @@ Texto da segunda locução...</pre>
     <span class="folder-name" id="jobsInfo" style="display:none"></span>
   </div>
   <div id="pastaStatus"></div>
+  <div class="painel" id="painel"></div>
 
   <div class="step-label" style="margin-top:18px">2 · Arraste os arquivos</div>
   <div class="zones">
@@ -829,18 +841,37 @@ function atualizarJobs(){
     el.classList.remove('ativa');
   }
 }
-/* cada linha do log diz de qual aula veio, para nao se perder com varias em paralelo */
-function log(tipo,texto,pasta){
-  const el=document.getElementById('pastaStatus');
-  if(!el)return;
-  const hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  const linha=document.createElement('div');
-  linha.className='status '+tipo;
-  linha.textContent='['+hora+'] '+(pasta?pasta+' \u2014 ':'')+texto;
-  el.insertBefore(linha,el.firstChild);
-  while(el.children.length>12)el.removeChild(el.lastChild);
+/* painel: um cartao por aula, com as 4 etapas do processo */
+const ETAPAS=[['premiere','XML \u2192 premiere/'],['sonar','Projeto de \u00e1udio \u2192 sonar/'],['Assets','\u00c1udio exportado \u2192 Assets/'],['fluxo','Fluxo \u2192 raiz']];
+const ICONES={pendente:'\u25cb',andando:'\u25d4',feito:'\u2713',erro:'\u2715'};
+const painel=new Map();   /* handle da pasta -> {nome, itens} */
+
+function etapa(raiz,chave,estado,detalhe){
+  if(!raiz)return;
+  if(!painel.has(raiz)){
+    painel.set(raiz,{nome:raiz.name,itens:{}});
+    while(painel.size>6) painel.delete(painel.keys().next().value);
+  }
+  painel.get(raiz).itens[chave]={estado:estado,detalhe:detalhe||''};
+  renderPainel();
 }
-function msg(id,tipo,texto){ log(tipo,texto,null); }
+function renderPainel(){
+  const el=document.getElementById('painel');
+  if(!el)return;
+  el.innerHTML=Array.from(painel.values()).reverse().map(d=>{
+    const linhas=ETAPAS.map(function(e){
+      const it=d.itens[e[0]]||{estado:'pendente',detalhe:''};
+      return '<div class="etapa '+it.estado+'"><span class="ic">'+ICONES[it.estado]+'</span>'
+           + '<span class="rot">'+e[1]+'</span>'
+           + '<span class="det">'+escapeHtml(it.detalhe)+'</span></div>';
+    }).join('');
+    return '<div class="card-aula"><div class="card-nome">'+escapeHtml(d.nome)+'</div>'+linhas+'</div>';
+  }).join('');
+}
+function msg(id,tipo,texto){
+  const el=document.getElementById(id);
+  if(el)el.innerHTML='<div class="status '+tipo+'">'+escapeHtml(texto)+'</div>';
+}
 function explicarErro(e){
   const n=e&&e.name;
   if(n==='NotFoundError')return 'N\u00e3o consegui ler a origem. Isso costuma acontecer ao arrastar de uma pasta da rede ou do iCloud: use o bot\u00e3o "Escolher pasta\u2026" da pr\u00f3pria \u00e1rea, ou copie o item para o PC antes.';
@@ -860,6 +891,7 @@ async function escolherPastaAula(){
     await guardar('pastaAula',pastaAula);
     marcarPastaAula();
     msg('pastaStatus','ok','Pasta conectada: '+pastaAula.name);
+    ETAPAS.forEach(e=>{ if(!painel.has(pastaAula)||!painel.get(pastaAula).itens[e[0]]) etapa(pastaAula,e[0],'pendente',''); });
   }catch(e){ if(e.name!=='AbortError')msg('pastaStatus','err',explicarErro(e)); }
 }
 /* valida uma pasta especifica: cada tarefa carrega a sua, mesmo que o usuario troque de aula */
@@ -904,23 +936,20 @@ async function planejar(handle,destino,modo,plano){
   if(modo!=='conteudo') dir=await destino.getDirectoryHandle(handle.name,{create:true});
   for await(const f of handle.values()) await planejar(f,dir,'entrada',plano);
 }
-async function copiarPlano(plano){
+async function copiarPlano(plano,aoAndar){
   const fila=plano.slice();
+  const total=plano.length;
   let n=0;
   const trabalhadores=Array.from({length:Math.min(LIMITE_PARALELO,fila.length)},async()=>{
     while(fila.length){
       const t=fila.shift();
       await gravar(t.dir,t.nome,await t.origem.getFile());
       n++;
+      if(aoAndar && (n%20===0)) aoAndar(n,total);
     }
   });
   await Promise.all(trabalhadores);
   return n;
-}
-async function copiarComModo(handle,destino,modo){
-  const plano=[];
-  await planejar(handle,destino,modo,plano);
-  return copiarPlano(plano);
 }
 
 /* ================= achar a pasta de audio export sozinho ================= */
@@ -939,8 +968,8 @@ async function acharPastas(dir,teste,caminho,achados,prof){
 async function importarAudioExport(raiz,silencioso){
   raiz = raiz || pastaAula;           /* capturado antes de qualquer espera */
   if(!(await garantirPasta(raiz)))return;
-  const nomeJob=raiz.name;
   jobsAtivos++; atualizarJobs();
+  etapa(raiz,'Assets','andando','procurando a pasta\u2026');
   try{
     let base=raiz, ondeBusquei='a pasta da aula';
     try{ base=await raiz.getDirectoryHandle('sonar'); ondeBusquei='sonar/'; }catch(e){}
@@ -948,14 +977,20 @@ async function importarAudioExport(raiz,silencioso){
     await acharPastas(base,n=>n.includes('export')&&n.includes('audio'),[],achados,0);
     if(!achados.length) await acharPastas(base,n=>n.includes('export'),[],achados,0);
     if(!achados.length){
-      if(!silencioso) log('warn','N\u00e3o achei nenhuma pasta com "export" no nome dentro de '+ondeBusquei+'. Arraste a pasta no quadro "\u00c1udios exportados".',nomeJob);
+      etapa(raiz,'Assets','erro','n\u00e3o achei pasta com "export" em '+ondeBusquei);
       return;
     }
     const destino=await subpastaDe(raiz,['Assets']);
     let n=0;
-    for(const a of achados){ n+=await copiarComModo(a.handle,destino,'soArquivos'); }
-    log('ok',n+(n===1?' arquivo de ':' arquivos de ')+achados.map(a=>a.caminho).join(', ')+' salvo(s) em Assets/.',nomeJob);
-  }catch(e){ log('err',explicarErro(e),nomeJob); }
+    for(const a of achados){
+      const plano=[];
+      await planejar(a.handle,destino,'soArquivos',plano);
+      n+=await copiarPlano(plano,function(feitos,total){
+        etapa(raiz,'Assets','andando',feitos+' de '+total+' arquivos');
+      });
+    }
+    etapa(raiz,'Assets','feito',(n===1?'1 arquivo de ':n+' arquivos de ')+achados[0].caminho);
+  }catch(e){ etapa(raiz,'Assets','erro',explicarErro(e)); }
   finally{ jobsAtivos--; atualizarJobs(); }
 }
 /* ================= zonas de arrastar ================= */
@@ -996,10 +1031,11 @@ async function escolherOrigemPasta(destino,rotulo,opts){
 
 async function processarArquivos(handles,arquivos,destino,rotulo,opts){
   const sid=opts.statusId||'pastaStatus';
-  const raizJob=pastaAula;            /* capturado antes de qualquer espera: trocar de aula depois nao afeta */
+  const raizJob=pastaAula;            /* capturado antes de qualquer espera */
   if(!(await garantirPasta(raizJob,sid)))return;
-  const nomeJob=raizJob.name;
+  const passo=opts.etapa||'sonar';
   jobsAtivos++; atualizarJobs();
+  etapa(raizJob,passo,'andando','preparando\u2026');
   try{
     const dir=await subpastaDe(raizJob,destino);
     let n=0;
@@ -1020,18 +1056,20 @@ async function processarArquivos(handles,arquivos,destino,rotulo,opts){
       } else if(ehHandle){
         const modo = opts.soArquivos ? 'soArquivos' : (opts.conteudo ? 'conteudo' : 'entrada');
         const plano=[];
+        etapa(raizJob,passo,'andando','lendo a pasta\u2026');
         await planejar(item,dir,modo,plano);
-        if(plano.length>40) log('warn','copiando '+plano.length+' arquivos\u2026 mantenha a aba aberta.',nomeJob);
-        n+=await copiarPlano(plano);
+        n+=await copiarPlano(plano,function(feitos,total){
+          etapa(raizJob,passo,'andando',feitos+' de '+total+' arquivos');
+        });
       } else {
         await gravar(dir,item.name,item);
         n++;
       }
     }
-    if(!n){ log('warn','Nada foi copiado. Confira se o arquivo \u00e9 do tipo esperado.',nomeJob); return; }
-    log('ok',n+(n===1?' item salvo em ':' itens salvos em ')+rotulo+'.',nomeJob);
+    if(!n){ etapa(raizJob,passo,'erro','nada foi copiado \u2014 confira o tipo do arquivo'); return; }
+    etapa(raizJob,passo,'feito',n===1?'1 arquivo':n+' arquivos');
     if(opts.depois) await opts.depois(raizJob,true);
-  }catch(e){ log('err',explicarErro(e),nomeJob); }
+  }catch(e){ etapa(raizJob,passo,'erro',explicarErro(e)); }
   finally{ jobsAtivos--; atualizarJobs(); }
 }
 
@@ -1069,8 +1107,9 @@ async function limparPasta(){
   await apagarGuardado('pastaAula');
   marcarPastaAula();
   document.getElementById('pastaStatus').innerHTML='';
+  painel.clear(); renderPainel();
   if(rodando){
-    log('warn',rodando+' c\u00f3pia(s) da aula anterior continuam rodando em segundo plano. Elas terminam sozinhas e avisam aqui.',null);
+    msg('pastaStatus','warn',rodando+' c\u00f3pia(s) da aula anterior continuam rodando em segundo plano e voltam a aparecer aqui ao terminar.');
   }
 }
 
@@ -1078,9 +1117,9 @@ async function limparPasta(){
 const origemSonar =()=>escolherOrigemPasta(['sonar'],'sonar/',{conteudo:true});
 
 /* ================= inicializacao ================= */
-ligarZona('dzXml',['premiere'],'premiere/',{xml:true,aceita:'.xml'});
-ligarZona('dzSonar',['sonar'],'sonar/',{conteudo:true,depois:importarAudioExport});
-ligarZona('dzFluxo',[],'na raiz da pasta, como "fluxo"',{renomear:'fluxo'});
+ligarZona('dzXml',['premiere'],'premiere/',{xml:true,aceita:'.xml',etapa:'premiere'});
+ligarZona('dzSonar',['sonar'],'sonar/',{conteudo:true,etapa:'sonar',depois:importarAudioExport});
+ligarZona('dzFluxo',[],'na raiz da pasta, como "fluxo"',{renomear:'fluxo',etapa:'fluxo'});
 
 (async function(){
   if(!TEM_FS)return;
