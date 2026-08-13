@@ -870,7 +870,6 @@ async function garantirPasta(raiz,statusId){
   if(!(await temPermissao(raiz,true))){ msg(statusId,'warn','Permiss\u00e3o da pasta n\u00e3o liberada. Clique em "Escolher pasta da aula" de novo.'); return false; }
   return true;
 }
-async function garantirPastaAula(statusId){ return garantirPasta(pastaAula,statusId); }
 async function subpastaDe(raiz,caminho){
   let dir=raiz;
   for(const parte of caminho){ dir=await dir.getDirectoryHandle(parte,{create:true}); }
@@ -889,30 +888,39 @@ async function gravar(dir,nome,conteudo){
     }
   }
 }
-/* copia so o conteudo da pasta arrastada, ignorando o nome dela */
-async function copiarConteudo(handle,destino){
-  if(handle.kind==='file'){ await gravar(destino,handle.name,await handle.getFile()); return 1; }
-  let n=0;
-  for await (const filho of handle.values()){ n+=await copiarEntrada(filho,destino); }
-  return n;
-}
-/* varre tudo e joga so os arquivos, soltos, no destino */
-async function copiarSoArquivos(handle,destino){
-  if(handle.kind==='file'){ await gravar(destino,handle.name,await handle.getFile()); return 1; }
-  let n=0;
-  for await (const filho of handle.values()){ n+=await copiarSoArquivos(filho,destino); }
-  return n;
-}
-/* copia recursiva: aceita arquivo ou pasta inteira */
-async function copiarEntrada(handle,destino){
-  if(handle.kind==='file'){
-    await gravar(destino,handle.name,await handle.getFile());
-    return 1;
+/* ---- copia em paralelo ----
+   antes: um arquivo por vez, esperando cada um terminar (lento com muitos arquivos pequenos)
+   agora: monta a lista toda e copia varios ao mesmo tempo                                   */
+const LIMITE_PARALELO=6;
+
+/* modo: 'entrada' (recria a pasta), 'conteudo' (so o que tem dentro), 'soArquivos' (achata tudo) */
+async function planejar(handle,destino,modo,plano){
+  if(handle.kind==='file'){ plano.push({origem:handle,dir:destino,nome:handle.name}); return; }
+  if(modo==='soArquivos'){
+    for await(const f of handle.values()) await planejar(f,destino,'soArquivos',plano);
+    return;
   }
-  const nova=await destino.getDirectoryHandle(handle.name,{create:true});
+  let dir=destino;
+  if(modo!=='conteudo') dir=await destino.getDirectoryHandle(handle.name,{create:true});
+  for await(const f of handle.values()) await planejar(f,dir,'entrada',plano);
+}
+async function copiarPlano(plano){
+  const fila=plano.slice();
   let n=0;
-  for await (const filho of handle.values()){ n+=await copiarEntrada(filho,nova); }
+  const trabalhadores=Array.from({length:Math.min(LIMITE_PARALELO,fila.length)},async()=>{
+    while(fila.length){
+      const t=fila.shift();
+      await gravar(t.dir,t.nome,await t.origem.getFile());
+      n++;
+    }
+  });
+  await Promise.all(trabalhadores);
   return n;
+}
+async function copiarComModo(handle,destino,modo){
+  const plano=[];
+  await planejar(handle,destino,modo,plano);
+  return copiarPlano(plano);
 }
 
 /* ================= achar a pasta de audio export sozinho ================= */
@@ -945,7 +953,7 @@ async function importarAudioExport(raiz,silencioso){
     }
     const destino=await subpastaDe(raiz,['Assets']);
     let n=0;
-    for(const a of achados){ n+=await copiarSoArquivos(a.handle,destino); }
+    for(const a of achados){ n+=await copiarComModo(a.handle,destino,'soArquivos'); }
     log('ok',n+(n===1?' arquivo de ':' arquivos de ')+achados.map(a=>a.caminho).join(', ')+' salvo(s) em Assets/.',nomeJob);
   }catch(e){ log('err',explicarErro(e),nomeJob); }
   finally{ jobsAtivos--; atualizarJobs(); }
@@ -1010,9 +1018,11 @@ async function processarArquivos(handles,arquivos,destino,rotulo,opts){
         await gravar(dir,opts.renomear+(i>0?f.name.slice(i):''),f);
         n++;
       } else if(ehHandle){
-        if(opts.soArquivos)      n+=await copiarSoArquivos(item,dir);
-        else if(opts.conteudo)   n+=await copiarConteudo(item,dir);
-        else                     n+=await copiarEntrada(item,dir);
+        const modo = opts.soArquivos ? 'soArquivos' : (opts.conteudo ? 'conteudo' : 'entrada');
+        const plano=[];
+        await planejar(item,dir,modo,plano);
+        if(plano.length>40) log('warn','copiando '+plano.length+' arquivos\u2026 mantenha a aba aberta.',nomeJob);
+        n+=await copiarPlano(plano);
       } else {
         await gravar(dir,item.name,item);
         n++;
