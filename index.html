@@ -173,24 +173,47 @@
   .fx-outro{display:block;}
   .fx-outro .fx-grupo{display:block;margin-bottom:5px;}
   @media(max-width:760px){.fx-cab{grid-template-columns:1fr 1fr;}}
-  @media print{
-    header,.tabs,.mtab,.controls,.hint,.acc,.dropzone,#pdfStatus,.step-label,#status,#counts,#results,.fx-modelos{display:none!important;}
-    .main-tab{display:none!important;} .main-tab#main-fluxo{display:block!important;}
-    body{background:#fff;color:#000;} .wrap{padding:0;max-width:100%;}
-    /* o que foi digitado ou escolhido sai em preto, nao no cinza da tela */
-    input,select,textarea{color:#000!important;background:#fff!important;
-      -webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    table.fx td,table.fx th{border:1px solid #000;background:#fff;color:#000;}
-    /* as cores da diaria precisam sobreviver a impressao */
-    table.fx td.diaria{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    table.fx tr.d1 td.diaria{background:#fff!important;color:#000!important;}
-    table.fx tr.d2 td.diaria{background:#2f6fd0!important;color:#fff!important;}
-    table.fx tr.d3 td.diaria{background:#cc2b2b!important;color:#fff!important;}
-    table.fx tr.faixa td{background:#efefef;color:#000;}
-    .fx-bloco{border:1px solid #000;background:#fff;}
-    .fx-obs{min-height:230px;background:#fff;border:1px solid #000;}
-  }
   .chk{display:flex;align-items:center;gap:8px;font-size:0.86rem;color:var(--muted);margin-top:4px;cursor:pointer;}
+</style>
+<!-- As regras de impressao moram aqui para serem reaproveitadas pelo gerador de PDF:
+     na hora de montar o PDF a pagina troca media="print" por media="all" na copia. -->
+<style id="estiloPdf" media="print">
+  header,.tabs,.mtab,.controls,.hint,.acc,.dropzone,#pdfStatus,.step-label,#status,#counts,#results,.fx-modelos{display:none!important;}
+  .main-tab{display:none!important;} .main-tab#main-fluxo{display:block!important;}
+  body{background:#fff;color:#000;} .wrap{padding:0;max-width:100%;}
+  /* o que foi digitado ou escolhido sai em preto, nao no cinza da tela */
+  input,select,textarea{color:#000!important;background:#fff!important;}
+  /* dentro da tabela o campo fica transparente: fundo branco por cima
+     comia as linhas que dividem as colunas */
+  table.fx td input{background:transparent!important;}
+  table.fx{border-collapse:collapse!important;}
+  table.fx td,table.fx th{border:1px solid #000;background:#fff;color:#000;}
+  /* a cor da diaria vai no fundo E na letra: se o Chrome estiver com
+     "Gráficos de plano de fundo" desmarcado, a letra colorida ainda sai */
+  table.fx td.diaria{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;font-weight:700;}
+  table.fx tr.d1 td.diaria{background:#fff!important;color:#000!important;}
+  table.fx tr.d2 td.diaria{background:#dbe8fb!important;color:#16417e!important;}
+  table.fx tr.d3 td.diaria{background:#fadcdc!important;color:#8c1414!important;}
+  table.fx tr.faixa td{background:#efefef;color:#000;}
+  /* produtora, violao, guitarra e os rotulos saiam em preto, nao no cinza da tela */
+  .fx-chip,.fx-grupo,.fx-cab label,.fx-dia .num,.fx-dia .rot{color:#000!important;}
+  .fx-chip{background:#fff!important;border:1px solid #000!important;}
+  /* o escolhido se distingue pela borda grossa e pelo negrito, que saem
+     mesmo com os fundos desligados na janela de impressao */
+  .fx-chip.on{background:#e8e8e8!important;color:#000!important;border:2px solid #000!important;font-weight:700;
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  .fx-bloco{border:1px solid #000;background:#fff;}
+  .fx-obs{min-height:230px;background:#fff;border:1px solid #000;}
+  /* o gerador de PDF troca cada campo por um texto fixo com a classe pdf-campo;
+     as regras abaixo dao a ele o mesmo tamanho que o campo tinha */
+  .pdf-campo{color:#000!important;background:#fff!important;white-space:pre-wrap;word-break:break-word;}
+  table.fx td .pdf-campo{padding:7px 8px;font-size:0.86rem;min-height:31px;background:transparent!important;}
+  .fx-cab .pdf-campo{width:100%;padding:8px 10px;font-size:0.88rem;border:1px solid #000;border-radius:7px;min-height:35px;}
+  .fx-dia .pdf-campo{width:100%;padding:6px 8px;font-size:0.82rem;border:1px solid #000;border-radius:6px;margin-bottom:5px;min-height:28px;}
+  .fx-dia .fx-linha .pdf-campo{flex:1 1 auto;min-width:0;margin-bottom:0;}
+  .fx-titulo.pdf-campo{min-height:48px;}
+  .fx-obs.pdf-campo{min-height:230px;}
+  .fx-livre.pdf-campo{min-height:62px;}
 </style>
 </head>
 <body>
@@ -368,7 +391,7 @@
   </div>
 
   <div class="controls">
-    <button class="btn" onclick="salvarPdfFluxo()">Salvar PDF</button>
+    <button class="btn" id="btnSalvarPdf" onclick="salvarPdfFluxo()">Salvar PDF</button>
     <button class="btn ghost" onclick="salvarFluxoNaPasta()">Salvar na pasta…</button>
     <span class="folder-name" id="fxPastaNome">nenhuma pasta escolhida</span>
     <span class="copied" id="fxSalvoOk" style="display:none">✓ salvo</span>
@@ -1298,12 +1321,186 @@ async function salvarTpNaPasta(trocar){
   }catch(e){ if(e.name!=='AbortError')alert('N\u00e3o consegui salvar: '+e.message); }
 }
 
-/* o navegador imprime o titulo da pagina no cabecalho da folha; durante a
-   impressao ele fica vazio, para nao sair nada acima do nome da aula */
-const TITULO_PAGINA=document.title;
-function salvarPdfFluxo(){
-  document.title='';
-  try{ window.print(); }finally{ document.title=TITULO_PAGINA; }
+/* ================= PDF do fluxo, montado pela propria pagina =================
+   O Safari do iPhone/iPad ignora window.print(), entao o PDF e desenhado aqui
+   e baixado como arquivo. Cada bloco vira uma imagem propria: assim nenhum
+   bloco nasce cortado entre duas folhas.                                     */
+const LIB_H2C='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+const LIB_JSPDF='https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+const PDF_MARGEM=10, PDF_LARGURA=210, PDF_ALTURA=297, PDF_ESPACO=4;
+const PDF_UTIL_X=PDF_LARGURA-2*PDF_MARGEM, PDF_UTIL_Y=PDF_ALTURA-2*PDF_MARGEM;
+
+let libsPdfCarregando=null;
+function carregarLibsPdf(){
+  if(window.html2canvas && window.jspdf)return Promise.resolve();
+  if(libsPdfCarregando)return libsPdfCarregando;
+  libsPdfCarregando=(async function(){
+    if(!window.html2canvas)await carregarScript(LIB_H2C);
+    if(!window.jspdf)await carregarScript(LIB_JSPDF);
+    if(!window.html2canvas || !window.jspdf)
+      throw new Error('As bibliotecas do PDF foram baixadas mas não ficaram disponíveis. Recarregue a página.');
+  })().catch(function(e){ libsPdfCarregando=null; throw e; });
+  return libsPdfCarregando;
+}
+
+/* os pedacos do fluxo que viram paginas, na ordem da tela */
+function blocosDoFluxo(){
+  const aba=document.getElementById('main-fluxo');
+  if(!aba)return [];
+  return Array.from(aba.children).filter(function(el){
+    if(el.classList.contains('fx-modelos'))return false;         /* nao sai no PDF */
+    if(el.classList.contains('controls'))return false;
+    if(el.classList.contains('hint'))return false;
+    return window.getComputedStyle(el).display!=='none';
+  });
+}
+
+/* Onde da para cortar um bloco, em fracao da altura (0 a 1).
+   Linha de tabela e cartao de diaria podem ser separados; o resto, nunca. */
+function pontosDeCorte(el){
+  const partes=el.querySelectorAll('table.fx tbody tr, .fx-dia');
+  if(!partes.length)return null;
+  const base=el.getBoundingClientRect();
+  const H=base.height||1;
+  const p=[0];
+  Array.prototype.forEach.call(partes,function(x){
+    const f=(x.getBoundingClientRect().bottom-base.top)/H;
+    if(f>0.001 && f<0.999 && p[p.length-1]!==f)p.push(f);
+  });
+  p.push(1);
+  return p.sort(function(a,b){return a-b;});
+}
+
+/* maior ponto de corte entre 'de' e 'ate'; null se nao houver nenhum */
+function corteQueCabe(cortes,de,ate){
+  if(!cortes)return null;
+  let achado=null;
+  for(const c of cortes){ if(c>de+0.001 && c<=ate+0.000001)achado=c; }
+  return achado;
+}
+
+/* Distribui os blocos nas folhas. Funcao pura, sem DOM: cada bloco entra como
+   {altura: mm, cortes: [...]|null} e sai a lista de pedacos ja posicionados. */
+function distribuirBlocos(blocos,utilY,espaco){
+  utilY=utilY||PDF_UTIL_Y; espaco=espaco===undefined?PDF_ESPACO:espaco;
+  const saida=[];
+  let pagina=0, y=0;
+  blocos.forEach(function(b,i){
+    let de=0;
+    let voltas=0;
+    while(de<0.999 && voltas++<200){
+      const sobra=utilY-y;
+      const faltaMM=(1-de)*b.altura;
+      if(faltaMM<=sobra+0.01){                       /* o que falta cabe aqui */
+        saida.push({bloco:i,de:de,ate:1,pagina:pagina,y:y,altura:faltaMM});
+        y+=faltaMM+espaco; de=1; break;
+      }
+      const alvo=de+(sobra>0?sobra/b.altura:0);
+      const corte=sobra>0?corteQueCabe(b.cortes,de,alvo):null;
+      if(corte!==null){                              /* parte dele cabe aqui */
+        const alt=(corte-de)*b.altura;
+        saida.push({bloco:i,de:de,ate:corte,pagina:pagina,y:y,altura:alt});
+        de=corte;
+        pagina++; y=0;
+      }else if(y>0){
+        pagina++; y=0;                               /* comeca numa folha limpa */
+      }else{
+        /* nem numa folha inteira cabe e nao ha onde cortar: corta no limite */
+        const ate=Math.min(1,de+utilY/b.altura);
+        saida.push({bloco:i,de:de,ate:ate,pagina:pagina,y:0,altura:(ate-de)*b.altura});
+        de=ate;
+        if(de<0.999){ pagina++; y=0; } else { y=utilY+espaco; }
+      }
+    }
+  });
+  return saida;
+}
+
+function fatiarCanvas(canvas,de,ate){
+  if(de<=0.001 && ate>=0.999)return canvas;
+  const y0=Math.round(de*canvas.height), y1=Math.round(ate*canvas.height);
+  const c=document.createElement('canvas');
+  c.width=canvas.width; c.height=Math.max(1,y1-y0);
+  c.getContext('2d').drawImage(canvas,0,y0,canvas.width,c.height,0,0,canvas.width,c.height);
+  return c;
+}
+
+/* troca cada campo por um texto fixo: o html2canvas desenha input e select
+   de um jeito proprio, que nem sempre bate com o que esta na tela */
+function congelarCampos(raiz,originais){
+  const campos=raiz.querySelectorAll('input,select,textarea');
+  /* a copia do documento nem sempre carrega o que foi escolhido num select,
+     entao o valor vem do campo de verdade, pareado pela posicao */
+  const bons=(originais && originais.length===campos.length)?originais:null;
+  Array.prototype.forEach.call(campos,function(c,i){
+    const fonte=bons?bons[i]:c;
+    let txt='';
+    if(fonte.tagName==='SELECT'){ const o=fonte.options[fonte.selectedIndex]; txt=o?o.text:''; }
+    else txt=fonte.value||'';
+    if(txt==='—')txt='';
+    const d=raiz.ownerDocument.createElement('div');
+    d.className='pdf-campo'+(c.className?' '+c.className:'');
+    d.textContent=txt;
+    c.parentNode.replaceChild(d,c);
+  });
+}
+
+let cortesDoBloco=null;
+async function pintarBloco(el){
+  cortesDoBloco=null;
+  const canvas=await window.html2canvas(el,{
+    scale:2, backgroundColor:'#ffffff', logging:false, useCORS:true,
+    windowWidth:1080,
+    onclone:function(doc,clonado){
+      const est=doc.getElementById('estiloPdf');
+      if(est)est.media='all';                 /* mesma aparencia da impressao */
+      congelarCampos(doc.body,Array.from(document.querySelectorAll('input,select,textarea')));
+      cortesDoBloco=pontosDeCorte(clonado);
+    }
+  });
+  return {canvas:canvas,cortes:cortesDoBloco};
+}
+
+let gerandoPdf=false;
+async function salvarPdfFluxo(){
+  if(gerandoPdf)return;
+  const btn=document.getElementById('btnSalvarPdf');
+  const diz=function(t){ if(btn)btn.textContent=t; };
+  const blocos=blocosDoFluxo();
+  if(!blocos.length){ alert('Não há nada no fluxo para salvar ainda.'); return; }
+  gerandoPdf=true; if(btn)btn.disabled=true; diz('Montando o PDF…');
+  try{
+    await carregarLibsPdf();
+    const pintados=[];
+    for(let i=0;i<blocos.length;i++){
+      diz('Montando o PDF… '+(i+1)+'/'+blocos.length);
+      pintados.push(await pintarBloco(blocos[i]));
+    }
+    const medidos=pintados.map(function(p){
+      return {altura:PDF_UTIL_X*p.canvas.height/p.canvas.width, cortes:p.cortes};
+    });
+    const plano=distribuirBlocos(medidos,PDF_UTIL_Y,PDF_ESPACO);
+    const pdf=new window.jspdf.jsPDF({orientation:'p',unit:'mm',format:'a4'});
+    let paginaAtual=0;
+    plano.forEach(function(pe){
+      while(paginaAtual<pe.pagina){ pdf.addPage(); paginaAtual++; }
+      const c=fatiarCanvas(pintados[pe.bloco].canvas,pe.de,pe.ate);
+      pdf.addImage(c.toDataURL('image/png'),'PNG',
+        PDF_MARGEM,PDF_MARGEM+pe.y,PDF_UTIL_X,pe.altura,undefined,'FAST');
+    });
+    pdf.save(nomeDoPdf());
+    diz('Salvar PDF');
+  }catch(e){
+    diz('Salvar PDF');
+    alert('Não deu para montar o PDF: '+(e&&e.message?e.message:e));
+  }finally{
+    gerandoPdf=false; if(btn)btn.disabled=false;
+  }
+}
+function nomeDoPdf(){
+  const campo=document.getElementById('nomeAula');
+  const nome=(FLUXO.titulo||(campo?campo.value:'')||'').trim();
+  return (nome?slugifyAula(nome):'fluxo')+'.pdf';
 }
 
 /* ================= limpar por aba ================= */
