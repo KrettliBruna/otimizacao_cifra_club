@@ -188,19 +188,17 @@
   table.fx td input{background:transparent!important;}
   table.fx{border-collapse:collapse!important;}
   table.fx td,table.fx th{border:1px solid #000;background:#fff;color:#000;}
-  /* a cor da diaria vai no fundo E na letra: se o Chrome estiver com
-     "Gráficos de plano de fundo" desmarcado, a letra colorida ainda sai */
+  /* o PDF e colorido: as diarias saem com a cor cheia, como na tela */
   table.fx td.diaria{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;font-weight:700;}
   table.fx tr.d1 td.diaria{background:#fff!important;color:#000!important;}
-  table.fx tr.d2 td.diaria{background:#dbe8fb!important;color:#16417e!important;}
-  table.fx tr.d3 td.diaria{background:#fadcdc!important;color:#8c1414!important;}
+  table.fx tr.d2 td.diaria{background:#2f6fd0!important;color:#fff!important;}
+  table.fx tr.d3 td.diaria{background:#cc2b2b!important;color:#fff!important;}
   table.fx tr.faixa td{background:#efefef;color:#000;}
   /* produtora, violao, guitarra e os rotulos saiam em preto, nao no cinza da tela */
   .fx-chip,.fx-grupo,.fx-cab label,.fx-dia .num,.fx-dia .rot{color:#000!important;}
   .fx-chip{background:#fff!important;border:1px solid #000!important;}
-  /* o escolhido se distingue pela borda grossa e pelo negrito, que saem
-     mesmo com os fundos desligados na janela de impressao */
-  .fx-chip.on{background:#e8e8e8!important;color:#000!important;border:2px solid #000!important;font-weight:700;
+  /* o escolhido sai no laranja da tela, com a cor cheia */
+  .fx-chip.on{background:#c8621f!important;color:#fff!important;border:1px solid #c8621f!important;font-weight:700;
     -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
   .fx-bloco{border:1px solid #000;background:#fff;}
   .fx-obs{min-height:230px;background:#fff;border:1px solid #000;}
