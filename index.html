@@ -1,0 +1,2110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pré e Pós">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#c8621f">
+<title>Pré e Pós-produção · Cifra Club</title>
+<style>
+  :root{
+    --ink:#17140f;--paper:#f6f2ea;--panel:#fff;--line:#e3ddd0;
+    --amber:#c8621f;--amber-soft:#f4e6d8;--muted:#79715f;--ok:#2f7d4a;--err:#c0392b;
+    --on-ink:#fff;--on-amber:#fff;--amber-hover:#a9511a;
+    --pre-bg:#1e1e1e;--pre-fg:#eee;--pre-mk:#fff;--pre-dot:#555;
+    --ok-bg:#eef7f0;--ok-bd:#bfe0c9;--ok-fg:#245c38;
+    --err-bg:#fdecea;--err-bd:#f5c6c0;--err-fg:#a5281b;
+    --warn-bg:#fff8ec;--warn-bd:#e6d3a8;--warn-fg:#6b5320;
+    color-scheme:light;
+  }
+  :root[data-theme="dark"]{
+    --ink:#ffffff;--paper:#000000;--panel:#0d0d0d;--line:#2e2e2e;
+    --amber:#e2833d;--amber-soft:#3a2a1c;--muted:#9a9184;--ok:#6dc492;--err:#e57363;
+    --on-ink:#000000;--on-amber:#1a1310;--amber-hover:#f09a58;
+    --pre-bg:#060606;--pre-fg:#e8e8e8;--pre-mk:#fff;--pre-dot:#4a463f;
+    --ok-bg:#16261c;--ok-bd:#2f4d38;--ok-fg:#8fd3a8;
+    --err-bg:#2b1614;--err-bd:#57302b;--err-fg:#f0a094;
+    --warn-bg:#2a2213;--warn-bd:#4d3f21;--warn-fg:#e0c584;
+    color-scheme:dark;
+  }
+  body,header,.howto,.markbar,textarea.paste,.btn,.mini,.mark,.chip,.tab,.status,.preview{transition:background-color .18s ease,color .18s ease,border-color .18s ease;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;line-height:1.5;}
+  header{padding:24px 30px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:18px;}
+  .theme-toggle{flex-shrink:0;white-space:nowrap;}
+  header h1{margin:0;font-size:1.4rem;letter-spacing:-0.02em;font-weight:700;}
+  header .sub{color:var(--muted);font-size:0.88rem;margin-top:4px;}
+  .wrap{padding:22px 30px 60px;max-width:1080px;margin:0 auto;}
+  .howto{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:9px;padding:14px 18px;margin-bottom:18px;font-size:0.88rem;}
+  .howto b{color:var(--amber);}
+  .howto pre{background:var(--amber-soft);border-radius:6px;padding:8px 12px;margin:8px 0 0;font-size:0.82rem;white-space:pre-wrap;font-family:'Consolas',monospace;}
+  .step-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.12em;color:var(--amber);font-weight:700;margin-bottom:8px;}
+  textarea.paste{width:100%;min-height:280px;border:1px solid var(--line);border-radius:0 0 10px 10px;border-top:none;padding:14px 16px;font-family:'Consolas','SF Mono',monospace;font-size:0.87rem;line-height:1.55;resize:vertical;background:var(--panel);color:var(--ink);}
+  textarea.paste:focus{outline:2px solid var(--amber);outline-offset:-2px;border-color:var(--line);}
+  /* barra de marcadores */
+  .markbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px 10px 0 0;padding:9px 10px;}
+  .markbar .grp-label{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-weight:700;margin-right:2px;}
+  .mark{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:6px;padding:6px 11px;font-size:0.78rem;font-weight:700;letter-spacing:0.03em;cursor:pointer;font-family:'Consolas','SF Mono',monospace;}
+  .mark:hover{background:var(--amber-soft);border-color:var(--amber);color:var(--amber);}
+  .mark:active{transform:translateY(1px);}
+  .markbar .spacer{flex:1;}
+  .mini{border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:6px;padding:6px 10px;font-size:0.78rem;font-weight:600;cursor:pointer;}
+  .mini:hover:not(:disabled){background:var(--amber-soft);border-color:var(--amber);color:var(--amber);}
+  .mini:disabled{opacity:0.38;cursor:default;}
+  /* sanfonas */
+  .acc{border:1px solid var(--line);border-radius:10px;background:var(--panel);margin:14px 0;overflow:hidden;}
+  .acc-head{width:100%;display:flex;align-items:center;gap:10px;background:transparent;border:none;padding:12px 15px;cursor:pointer;text-align:left;font-family:inherit;color:var(--ink);}
+  .acc-head:hover{background:var(--amber-soft);}
+  .acc-ic{color:var(--amber);font-size:0.8rem;transition:transform .15s ease;flex-shrink:0;}
+  .acc.aberto .acc-ic{transform:rotate(90deg);}
+  .acc-tit{font-weight:700;font-size:0.88rem;}
+  .acc-res{margin-left:auto;color:var(--muted);font-size:0.8rem;text-align:right;word-break:break-word;}
+  .acc-body{display:none;padding:0 15px 15px;border-top:1px solid var(--line);}
+  .acc.aberto .acc-body{display:block;}
+  .acc-body .markbar{border-radius:10px 10px 0 0;margin-top:14px;}
+  .hint{font-size:0.76rem;color:var(--muted);margin-top:6px;}
+  .config{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;}
+  .config label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:600;display:block;margin-bottom:5px;}
+  .config select,.config input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:0.88rem;background:var(--panel);color:var(--ink);}
+  .btn{background:var(--amber);color:var(--on-amber);border:none;padding:11px 22px;border-radius:8px;font-size:0.94rem;font-weight:600;cursor:pointer;}
+  .btn:hover{background:var(--amber-hover);}
+  .btn.ghost{background:transparent;color:var(--amber);border:1px solid var(--amber);}
+  .btn.ghost:hover{background:var(--amber-soft);}
+  .controls{display:flex;gap:11px;margin-top:14px;flex-wrap:wrap;align-items:center;}
+  .status{border-radius:9px;padding:12px 16px;font-size:0.87rem;margin:16px 0;}
+  .status.ok{background:var(--ok-bg);border:1px solid var(--ok-bd);color:var(--ok-fg);}
+  .status.err{background:var(--err-bg);border:1px solid var(--err-bd);color:var(--err-fg);}
+  .status.warn{background:var(--warn-bg);border:1px solid var(--warn-bd);color:var(--warn-fg);}
+  .counts{display:flex;gap:9px;flex-wrap:wrap;margin:10px 0;}
+  .chip{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;background:var(--panel);border:1px solid var(--line);font-size:0.83rem;font-weight:600;}
+  .chip .n{background:var(--ink);color:var(--on-ink);border-radius:10px;padding:1px 8px;font-size:0.75rem;}
+  .preview{background:var(--pre-bg);color:var(--pre-fg);border-radius:9px;padding:16px 18px;font-size:0.9rem;line-height:1.6;white-space:pre-wrap;max-height:420px;overflow:auto;}
+  .preview .mk{font-weight:700;color:var(--pre-mk);}
+  .preview .dot{color:var(--pre-dot);}
+  .copied{color:var(--ok);font-size:0.82rem;font-weight:600;}
+  .section-head{display:flex;align-items:baseline;justify-content:space-between;margin:6px 0 12px;}
+  .section-head h2{margin:0;font-size:1.05rem;}
+  .section-head .meta{color:var(--muted);font-size:0.83rem;}
+
+  /* ---- abas principais ---- */
+  .tabs.main{display:flex;gap:6px;flex-wrap:wrap;margin:26px 0 20px;border-bottom:2px solid var(--ink);}
+  .mtab{padding:10px 20px;border:1px solid var(--line);border-bottom:none;border-radius:9px 9px 0 0;background:var(--panel);cursor:pointer;font-weight:600;font-size:0.92rem;color:var(--muted);position:relative;top:1px;}
+  .mtab.active{background:var(--ink);color:var(--on-ink);border-color:var(--ink);}
+  .main-tab{display:none;}
+  .main-tab.active{display:block;}
+  /* ---- areas de arrastar ---- */
+  .dropzone{border:2px dashed var(--line);border-radius:11px;background:var(--panel);padding:34px 22px;text-align:center;cursor:pointer;margin:16px 0;}
+  .dropzone:hover,.dropzone.hover{border-color:var(--amber);background:var(--amber-soft);}
+  .dropzone.small{padding:18px 16px;margin:0;text-align:left;}
+  .dz-icon{font-size:2rem;line-height:1;margin-bottom:10px;}
+  .dz-title{font-weight:700;font-size:0.95rem;}
+  .dz-sub{color:var(--muted);font-size:0.82rem;margin-top:4px;}
+  .dz-sub code,.howto code{background:var(--amber-soft);border-radius:4px;padding:1px 6px;font-family:'Consolas',monospace;font-size:0.95em;}
+  .zones{display:grid;grid-template-columns:1fr;gap:12px;margin-top:18px;}
+  .folderbar{display:flex;gap:11px;align-items:center;flex-wrap:wrap;margin:16px 0;}
+  .folder-name{font-family:'Consolas',monospace;font-size:0.85rem;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:7px 12px;}
+  .folder-name.ativa{color:var(--ok);border-color:var(--ok);}
+  .zbtn{margin-top:9px;}
+  .painel{display:flex;gap:14px;flex-wrap:wrap;margin-top:16px;}
+  .card-aula{flex:1 1 300px;min-width:270px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px;}
+  .card-nome{font-weight:700;font-size:0.88rem;margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid var(--line);word-break:break-word;}
+  .etapa{display:flex;gap:9px;align-items:baseline;font-size:0.83rem;padding:4px 0;flex-wrap:wrap;}
+  .etapa .ic{width:15px;flex-shrink:0;font-weight:700;}
+  .etapa .det{color:var(--muted);font-size:0.77rem;margin-left:auto;text-align:right;}
+  .etapa.pendente{color:var(--muted);}
+  .etapa.feito .ic{color:var(--ok);}
+  .etapa.andando .ic{color:var(--amber);}
+  .etapa.fila .ic{color:var(--muted);}
+  .etapa.fila{color:var(--muted);}
+  .etapa.erro{color:var(--err);}
+  .etapa.erro .det{color:var(--err);margin-left:0;text-align:left;width:100%;}
+  /* ---- aba Fluxo ---- */
+  .fx-cab{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;}
+  .fx-cab label{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.09em;color:var(--muted);font-weight:700;display:block;margin-bottom:5px;}
+  .fx-cab select,.fx-cab input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:0.88rem;background:var(--panel);color:var(--ink);}
+  .fx-titulo{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:1.05rem;font-weight:700;text-align:center;font-family:'Courier New',monospace;}
+  table.fx{width:100%;border-collapse:collapse;margin-top:6px;}
+  table.fx th{background:var(--panel);border:1px solid var(--line);padding:7px 8px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);}
+  table.fx td{border:1px solid var(--line);padding:0;background:var(--panel);}
+  table.fx td input{width:100%;border:none;background:transparent;color:var(--ink);padding:7px 8px;font-size:0.86rem;font-family:inherit;}
+  table.fx td input:focus{outline:2px solid var(--amber);outline-offset:-2px;}
+  table.fx td.cena{font-family:'Courier New',monospace;font-weight:700;text-align:center;padding:7px 10px;white-space:nowrap;}
+  table.fx tr.divisor td{background:transparent;border:none;border-top:1px solid var(--muted);padding:14px 2px 6px;
+    font-size:0.68rem;letter-spacing:0.18em;color:var(--muted);font-weight:700;}
+  table.fx tr.espaco td{height:14px;background:transparent;border-left:none;border-right:none;}
+  td.diaria{text-align:center;cursor:pointer;user-select:none;width:34px;font-weight:700;font-size:0.78rem;}
+  td.diaria{transition:background-color .12s ease;}
+  tr.d1 td.diaria{background:var(--ink);color:var(--on-ink);}
+  tr.d2 td.diaria{background:#2f6fd0;color:#fff;}
+  tr.d3 td.diaria{background:#cc2b2b;color:#fff;}
+
+  .fx-bloco{border:1px solid var(--line);border-radius:10px;background:var(--panel);padding:14px 16px;margin-top:16px;}
+  .fx-bloco h3{margin:0 0 10px;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--amber);}
+  .fx-modelos{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 16px;}
+  .fx-modelo{border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:8px;padding:9px 18px;font-size:0.86rem;font-weight:600;cursor:pointer;}
+  .fx-modelo.on{background:var(--amber);color:var(--on-amber);border-color:var(--amber);}
+  .fx-so-padrao,.fx-so-diarias,.fx-so-micro{display:none;}
+  .fx-modo-padrao .fx-so-padrao{display:block;}
+  .fx-modo-diarias .fx-so-diarias{display:block;}
+  .fx-modo-micro .fx-so-micro{display:block;}
+  th.fx-so-diarias,td.fx-so-diarias{display:none;}
+  .fx-modo-diarias th.fx-so-diarias,.fx-modo-diarias td.fx-so-diarias{display:table-cell;}
+  .fx-dias{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:10px;}
+  .fx-dia{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--paper);}
+  .fx-dia .num{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-weight:700;margin-bottom:5px;}
+  .fx-dia .rot{font-size:0.62rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;margin-bottom:3px;}
+  .fx-dia input{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font-size:0.82rem;margin-bottom:5px;}
+  .fx-dia .fx-linha{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+  .fx-dia .fx-linha .cena{flex:0 0 70px;font-size:0.72rem;font-weight:700;letter-spacing:0.03em;}
+  .fx-dia .fx-linha input{flex:1 1 auto;min-width:0;margin-bottom:0;}
+  .fx-dia .fx-chips{margin:0;gap:5px;}
+  .fx-dia .fx-chip{padding:3px 9px;font-size:0.74rem;}
+  .fx-dupla{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;}
+  @media(max-width:760px){.fx-dupla{grid-template-columns:1fr;}}
+  .fx-chips{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:8px;}
+  .fx-chip{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:20px;padding:5px 13px;font-size:0.8rem;cursor:pointer;}
+  .fx-chip.on{background:var(--amber);color:var(--on-amber);border-color:var(--amber);font-weight:700;}
+  .fx-grupo{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);font-weight:700;margin-right:4px;}
+  .fx-obs{width:100%;min-height:150px;border:1px solid var(--line);border-radius:9px;padding:12px 14px;background:var(--paper);color:var(--ink);font-family:inherit;font-size:0.88rem;resize:vertical;}
+  .fx-livre{width:100%;min-height:62px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font-size:0.88rem;font-family:inherit;resize:vertical;}
+  .fx-outro{display:block;}
+  .fx-outro .fx-grupo{display:block;margin-bottom:5px;}
+  @media(max-width:760px){.fx-cab{grid-template-columns:1fr 1fr;}}
+  @media print{
+    header,.tabs,.mtab,.controls,.hint,.acc,.dropzone,#pdfStatus,.step-label,#status,#counts,#results,.fx-modelos{display:none!important;}
+    .main-tab{display:none!important;} .main-tab#main-fluxo{display:block!important;}
+    body{background:#fff;color:#000;} .wrap{padding:0;max-width:100%;}
+    /* o que foi digitado ou escolhido sai em preto, nao no cinza da tela */
+    input,select,textarea{color:#000!important;background:#fff!important;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    table.fx td,table.fx th{border:1px solid #000;background:#fff;color:#000;}
+    /* as cores da diaria precisam sobreviver a impressao */
+    table.fx td.diaria{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    table.fx tr.d1 td.diaria{background:#fff!important;color:#000!important;}
+    table.fx tr.d2 td.diaria{background:#2f6fd0!important;color:#fff!important;}
+    table.fx tr.d3 td.diaria{background:#cc2b2b!important;color:#fff!important;}
+    table.fx tr.faixa td{background:#efefef;color:#000;}
+    .fx-bloco{border:1px solid #000;background:#fff;}
+    .fx-obs{min-height:230px;background:#fff;border:1px solid #000;}
+  }
+  .chk{display:flex;align-items:center;gap:8px;font-size:0.86rem;color:var(--muted);margin-top:4px;cursor:pointer;}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Pré e Pós-produção · Cifra Club</h1>
+    <div class="sub">Roteiro e arquivo do Teleprompter, conversão do XML e organização da pasta da aula.</div>
+  </div>
+  <button class="mini theme-toggle" id="btnTema" onclick="alternarTema()">🌙 Escuro</button>
+</header>
+
+<div class="wrap">
+
+  <div class="tabs main">
+    <div class="mtab active" data-main="tp" onclick="switchMain('tp')">TP</div>
+    <div class="mtab" data-main="fluxo" onclick="switchMain('fluxo')">Fluxo</div>
+    <div class="mtab" data-main="pasta" onclick="switchMain('pasta')">Pós Prod.</div>
+  </div>
+
+<div class="main-tab active" id="main-tp">
+<div class="controls" style="margin:0 0 16px;justify-content:flex-end">
+  <span class="hint" style="margin:0 auto 0 0">Limpar tudo zera as três abas de uma vez.</span>
+  <button class="btn ghost" id="btnLimparTudo" onclick="limparTudo()">Limpar tudo</button>
+  <span class="copied" id="limpouTudoOk" style="display:none">✓ tudo limpo</span>
+</div>
+<div class="step-label">1 · Subir o roteiro</div>
+  <div class="dropzone" id="dzPdf">
+    <div class="dz-icon">↓</div>
+    <div class="dz-title">Arraste o roteiro em PDF aqui</div>
+    <div class="dz-sub">ou clique para escolher — o nome da aula e as cenas são lidos sozinhos</div>
+  </div>
+  <div id="pdfStatus"></div>
+
+  <div class="step-label" style="margin-top:20px">2 · Nome da aula</div>
+  <div class="config" style="grid-template-columns:1fr">
+    <div><input type="text" id="nomeAula" placeholder="Ex: Aula 2.6. Aplicando os intervalos em melodias — preenchido sozinho ao subir o PDF"></div>
+  </div>
+  <div id="nomePreview" style="display:none;">
+    <div class="config" style="grid-template-columns:1fr auto;gap:8px;align-items:end;margin-bottom:8px;">
+      <div><label>Nome pro TP e pro Fluxo</label><input type="text" id="nomeTPOut" readonly></div>
+      <button class="btn ghost" onclick="copiarCampo('nomeTPOut','tpNameOk')">Copiar</button>
+    </div>
+    <span class="copied" id="tpNameOk" style="display:none">✓ copiado</span>
+    <div class="config" style="grid-template-columns:1fr auto;gap:8px;align-items:end;margin-top:8px;">
+      <div><label>Nome pro Fluxo</label><input type="text" id="nomeFluxoOut" readonly></div>
+      <button class="btn ghost" onclick="copiarCampo('nomeFluxoOut','fluxoNameOk')">Copiar</button>
+    </div>
+    <span class="copied" id="fluxoNameOk" style="display:none">✓ copiado</span>
+  </div>
+
+  <div class="acc" id="accRoteiro">
+    <button class="acc-head" onclick="toggleAcc('accRoteiro')">
+      <span class="acc-ic">▸</span>
+      <span class="acc-tit">Colar ou editar o roteiro à mão</span>
+      <span class="acc-res" id="resRoteiro">vazio</span>
+    </button>
+    <div class="acc-body">
+      <div class="markbar">
+        <span class="grp-label">Inserir cena</span>
+        <button class="mark" onclick="inserirMarcador('LOC')">LOC</button>
+        <button class="mark" onclick="inserirMarcador('ACORDES')">ACORDES</button>
+        <button class="mark" onclick="inserirMarcador('RITMO')">RITMO</button>
+        <button class="mark" onclick="inserirMarcador('DEDIL')">DEDIL</button>
+        <button class="mark" onclick="inserirMarcador('TAB')">TAB</button>
+        <button class="mark" onclick="inserirMarcador('TOCA')">TOCA</button>
+        <button class="mark" onclick="inserirMarcador('TOCA SOLO')">TOCA SOLO</button>
+        <span class="spacer"></span>
+        <button class="mini" id="btnUndo" onclick="desfazer()" title="Ctrl+Z">↶ Desfazer</button>
+        <button class="mini" id="btnRedo" onclick="refazer()" title="Ctrl+Y">↷ Refazer</button>
+        <button class="mini" onclick="renumerar()" title="Corrige a numeração de todas as cenas na ordem em que aparecem">Renumerar</button>
+      </div>
+      <textarea class="paste" id="input" placeholder="Cole o roteiro aqui, ou clique num botão de cena acima..."></textarea>
+      <div class="hint">O que veio do PDF aparece aqui e pode ser editado — o arquivo do TP e o fluxograma se refazem sozinhos, sem botão nenhum. Para começar do zero, use os botões de cena: o número entra sozinho. Ctrl+Z desfaz qualquer alteração, inclusive o Limpar. <span class="copied" id="avisoEdicao" style="display:none"></span></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn ghost" onclick="carregarExemplo()">Ver exemplo</button>
+  </div>
+
+  <div id="status"></div>
+  <div class="counts" id="counts"></div>
+
+  <div id="results" style="display:none">
+    <div class="section-head"><h2>Prévia do arquivo</h2><span class="meta" id="tpMeta"></span></div>
+    <div class="preview" id="tpPreview"></div>
+    <div class="controls" style="margin-top:14px">
+      <button class="btn" onclick="baixarTpp()">Baixar .tpp pro Teleprompter</button>
+      <span class="copied" id="tppOk" style="display:none">✓ baixado</span>
+      <button class="btn ghost" onclick="salvarTpNaPasta()">Salvar na pasta…</button>
+      <span class="copied" id="tpPastaOk" style="display:none">✓ salvo</span>
+      <button class="mini" onclick="salvarTpNaPasta(true)">Trocar pasta</button>
+      <span class="folder-name" id="pastaTPNome">vai perguntar onde salvar</span>
+    </div>
+  </div>
+
+  <div class="controls" style="margin-top:22px">
+    <button class="btn ghost" id="btnLimparTp" onclick="limpar()">Limpar esta aba</button>
+    <span class="hint" style="margin:0">Apaga só o roteiro e o arquivo do TP. Ctrl+Z desfaz.</span>
+  </div>
+</div><!-- fim main-tp -->
+
+<div class="main-tab" id="main-fluxo">
+  <div class="fx-modelos">
+    <span class="fx-grupo">Tipo de fluxo</span>
+    <button class="fx-modelo" data-modelo="padrao" onclick="trocarModelo('padrao')">Padrão</button>
+    <button class="fx-modelo" data-modelo="diarias" onclick="trocarModelo('diarias')">Várias diárias</button>
+    <button class="fx-modelo" data-modelo="micro" onclick="trocarModelo('micro')">Microaula</button>
+  </div>
+
+  <input type="text" class="fx-titulo" id="fxTitulo" placeholder="Nome do vídeo">
+
+  <div class="fx-cab">
+    <div><label>Instrutor</label><select id="fxInstrutor"></select></div>
+    <div><label>Tipo</label><select id="fxTipo"></select></div>
+    <div><label>Estúdio</label><select id="fxEstudio"></select></div>
+    <div><label>Instrumento</label><select id="fxInstrumento"></select></div>
+  </div>
+
+  <div id="fxBlocoCenas">
+    <div class="step-label" style="margin-top:20px">Cenas</div>
+    <div id="fxAviso"></div>
+    <table class="fx"><thead><tr>
+      <th style="width:34px" title="Clique para trocar a diária">D</th>
+      <th style="width:120px">Cena</th><th style="width:70px">Cam</th>
+      <th style="width:170px">Take(s)</th>
+      <th class="fx-so-diarias" style="width:118px">Data de gravação</th>
+      <th id="fxColObs">Observações</th>
+    </tr></thead><tbody id="fxCenas"></tbody></table>
+  </div>
+
+  <div class="fx-bloco">
+    <h3>BPM</h3>
+    <div class="fx-cab" style="margin:0;grid-template-columns:1fr 1fr">
+      <div><label>Ensina (dedil, ritmo, tab)</label><input type="text" id="fxBpmEnsina" placeholder="ex: 50"></div>
+      <div><label>Toca</label><input type="text" id="fxBpmToca" placeholder="ex: 79"></div>
+    </div>
+  </div>
+
+  <div class="fx-bloco">
+    <h3>Outras observações</h3>
+    <textarea class="fx-obs" id="fxObs" placeholder="Espaço livre — escreva aqui ou à mão depois de imprimir."></textarea>
+  </div>
+
+  <div class="fx-bloco fx-so-padrao">
+    <h3>Arquivos por diária</h3>
+    <div class="fx-cab" id="fxDiarias" style="margin:0 0 14px"></div>
+    <table class="fx"><thead><tr><th style="width:120px">Cena</th>
+      <th>1º dia</th><th>2º dia</th><th>3º dia</th></tr></thead>
+      <tbody id="fxArquivos"></tbody></table>
+    <div class="hint">LOC é um arquivo; TAB, TOCA, RITMO e DEDIL são outro. ACORDES usa os dois números.</div>
+  </div>
+
+  <div class="fx-bloco fx-so-diarias">
+    <h3>Diárias</h3>
+    <div class="fx-cab" style="margin:0 0 14px;grid-template-columns:200px">
+      <div><label>Quantas diárias</label><input type="text" inputmode="numeric" maxlength="2" id="fxQtdDiarias" placeholder="10" value="10"></div>
+    </div>
+    <div class="fx-dias" id="fxDiasLista"></div>
+    <div class="hint" style="margin-top:12px">Cada diária tem data, quem gravou e os números dos arquivos daquele dia.</div>
+  </div>
+
+  <div class="fx-dupla">
+    <div class="fx-bloco" style="margin-top:0">
+      <h3>Violão</h3>
+      <div class="fx-chips" id="fxViolaoAco"><span class="fx-grupo">Aço</span></div>
+      <div class="fx-chips" id="fxViolaoNylon"><span class="fx-grupo">Nylon</span></div>
+      <div class="fx-chips fx-outro"><span class="fx-grupo">Outro</span><textarea class="fx-livre" id="fxViolaoLivre" placeholder="Boutique Instrumentos Violão …"></textarea></div>
+    </div>
+    <div class="fx-bloco" style="margin-top:0">
+      <h3>Guitarra</h3>
+      <div class="fx-chips" id="fxGuitarraPhx"><span class="fx-grupo">PHX</span></div>
+      <div class="fx-chips fx-outro"><span class="fx-grupo">Outro</span><textarea class="fx-livre" id="fxGuitarraLivre" placeholder="Boutique Instrumentos Guitarra …"></textarea></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" onclick="salvarPdfFluxo()">Salvar PDF</button>
+    <button class="btn ghost" onclick="salvarFluxoNaPasta()">Salvar na pasta…</button>
+    <span class="folder-name" id="fxPastaNome">nenhuma pasta escolhida</span>
+    <span class="copied" id="fxSalvoOk" style="display:none">✓ salvo</span>
+  </div>
+  <div class="hint">O preenchimento fica guardado no navegador por aula — fechou e abriu, continua de onde parou.</div>
+
+  <div class="controls" style="margin-top:22px">
+    <button class="btn ghost" id="btnLimparFluxo" onclick="limparFluxo()">Limpar esta aba</button>
+    <span class="copied" id="fxLimpoOk" style="display:none">✓ limpo</span>
+    <span class="hint" style="margin:0">Apaga só o fluxo preenchido desta aula. As cenas voltam do roteiro.</span>
+  </div>
+</div>
+
+<div class="main-tab" id="main-pasta">
+<div class="folderbar">
+    <button class="btn" onclick="escolherPastaAula()">1 · Escolher pasta da aula</button>
+    <button class="btn ghost" onclick="importarAudioExport(null,false)">Procurar áudio export</button>
+    <span class="folder-name" id="pastaAulaNome">nenhuma pasta escolhida</span>
+    <span class="folder-name" id="jobsInfo" style="display:none"></span>
+  </div>
+  <div id="pastaStatus"></div>
+  <div class="painel" id="painel"></div>
+
+  <div class="step-label" style="margin-top:18px">2 · Arraste os arquivos</div>
+  <div class="zones">
+    <div class="dropzone small" id="dzXml">
+      <div class="dz-title">XML do DaVinci</div>
+      <div class="dz-sub">converte e salva em <code>premiere/</code></div>
+    </div>
+    <div class="dropzone small" id="dzSonar">
+      <div class="dz-title">Projeto de áudio</div>
+      <div class="dz-sub">o conteúdo da pasta vai para <code>sonar/</code>, sem a pasta de fora</div>
+      <button class="mini zbtn" onclick="event.stopPropagation();origemSonar()">Escolher pasta…</button>
+    </div>
+    <div class="dropzone small" id="dzFluxo">
+      <div class="dz-title">Fluxo (iCloud)</div>
+      <div class="dz-sub">renomeia para <code>fluxo</code> e salva na raiz</div>
+    </div>
+  </div>
+
+  <div class="controls" style="margin-top:22px">
+    <button class="btn ghost" id="btnLimparPasta" onclick="limparPasta()">Limpar esta aba</button>
+    <span class="hint" style="margin:0">Solta a pasta da aula e zera o painel. Cópias em andamento continuam.</span>
+  </div>
+</div><!-- fim main-pasta -->
+</div><!-- fim wrap -->
+
+<script>
+/* ---------- tema claro / escuro ---------- */
+function aplicarTema(t){
+  document.documentElement.setAttribute('data-theme',t);
+  const b=document.getElementById('btnTema');
+  if(b)b.textContent = t==='dark' ? '☀ Claro' : '🌙 Escuro';
+  try{localStorage.setItem('tema-gerador-tp',t);}catch(e){}
+}
+function alternarTema(){
+  aplicarTema(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
+}
+(function(){
+  let t=null;
+  try{t=localStorage.getItem('tema-gerador-tp');}catch(e){}
+  if(t!=='dark'&&t!=='light'){
+    t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
+  }
+  aplicarTema(t);
+})();
+
+/* ordem oficial do fluxograma */
+const ORDEM=['LOC','ACORDES','RITMO','DEDIL','TAB','TOCA','TOCA SOLO'];
+const PONTOS_RESPIRO=20;   /* pontinhos de respiro no comeco e no fim do .tpp */
+const sceneRe=/^\s*(TOCA\s+SOLO|LOC|TOCA|RITMO|ACORDES?|TAB|DEDIL(?:HADO)?)\s*(?:0*(\d+))?\s*(.*)$/i;
+/* cabecalho, metadados e rodape do roteiro: nao sao cena nem fala */
+const LINHAS_IGNORADAS=[
+  /^retranca\s*:/i, /^produto\s*:/i, /^tipo\s*:/i, /^nome\s*:/i,
+  /^data\s*:/i, /^apresentador\s*:/i, /^bpm\b.*:/i,
+  /^roteiro\s+do\b/i, /^pag\.?\s*\d+\s*$/i,
+  /^\d{1,2}\/\d{1,2}\/\d{2,4},?\s*\d{1,2}:\d{2}/,
+  /^\d{1,3}$/,                       /* numero solto: sobra da Retranca quebrada em duas linhas */
+  /-\s*\d+\s*bpm\s*$/i
+];
+function linhaIgnorada(l){ return LINHAS_IGNORADAS.some(function(r){ return r.test(l); }); }
+let STATE={ordered:[],flux:[],todas:[],secoes:[]};
+/* REGRA: os dois roteiros (YouTube e site) entram sempre juntos, cada um com a sua
+   numeracao, separados por uma divisoria. Nao ha escolha de um ou outro.          */
+const ta=document.getElementById('input');
+
+function normLabel(l){
+  const m=l.match(sceneRe);
+  if(!m)return null;
+  const num=m[2]?parseInt(m[2],10):null;
+  const resto=(m[3]||'').trim();
+  /* so aceita texto na mesma linha se o rotulo vier em MAIUSCULAS e com numero;
+     assim uma fala como "Toca assim:" nunca vira cena                          */
+  if(resto && (num===null || m[1]!==m[1].toUpperCase()))return null;
+  let type=m[1].toUpperCase().replace(/\s+/g,' ');
+  if(type==='DEDILHADO')type='DEDIL';
+  if(type==='ACORDE')type='ACORDES';
+  return {type,num,resto,label:num!=null?`${type} ${String(num).padStart(2,'0')}`:type};
+}
+
+/* ---------- histórico (Ctrl+Z / Ctrl+Y) ---------- */
+let histUndo=[],histRedo=[],valorAtual=ta.value,typingTimer=null;
+
+function pushHist(valor){
+  if(histUndo.length && histUndo[histUndo.length-1]===valor)return;
+  histUndo.push(valor);
+  if(histUndo.length>200)histUndo.shift();
+  histRedo=[];
+}
+function setInput(novo){
+  clearTimeout(typingTimer);
+  if(ta.value!==valorAtual)pushHist(valorAtual);
+  pushHist(ta.value);
+  ta.value=novo;
+  valorAtual=novo;
+  atualizarBotoesHist();
+  if(typeof atualizarResumos==='function')atualizarResumos();
+}
+function desfazer(){
+  clearTimeout(typingTimer);
+  if(ta.value!==valorAtual){pushHist(valorAtual);valorAtual=ta.value;}
+  if(!histUndo.length)return;
+  const anterior=histUndo.pop();
+  histRedo.push(ta.value);
+  ta.value=anterior;valorAtual=anterior;
+  ta.focus();atualizarBotoesHist();
+}
+function refazer(){
+  if(!histRedo.length)return;
+  const prox=histRedo.pop();
+  histUndo.push(ta.value);
+  ta.value=prox;valorAtual=prox;
+  ta.focus();atualizarBotoesHist();
+}
+function atualizarBotoesHist(){
+  document.getElementById('btnUndo').disabled=!histUndo.length && ta.value===valorAtual;
+  document.getElementById('btnRedo').disabled=!histRedo.length;
+}
+let reprocTimer=null;
+/* editou o roteiro (veio do PDF ou escrito do zero) -> refaz o TP e o fluxograma sozinho */
+function agendarReprocessar(){
+  clearTimeout(reprocTimer);
+  reprocTimer=setTimeout(function(){
+    if(!ta.value.trim())return;
+    if(parse(ta.value).length===0)return;            /* texto no meio da digitacao: nao alarma */
+    processar();                                     /* inclusive na primeira vez */
+    const av=document.getElementById('avisoEdicao');
+    if(av){ av.textContent='\u2713 atualizado com a sua edi\u00e7\u00e3o'; av.style.display='inline';
+            setTimeout(function(){av.style.display='none';},2200); }
+  },900);
+}
+ta.addEventListener('input',()=>{
+  agendarReprocessar();
+  clearTimeout(typingTimer);
+  const anterior=valorAtual;
+  typingTimer=setTimeout(()=>{
+    pushHist(anterior);
+    valorAtual=ta.value;
+    atualizarBotoesHist();
+    atualizarResumos();
+  },500);
+});
+ta.addEventListener('keydown',e=>{
+  const ctrl=e.ctrlKey||e.metaKey;
+  if(!ctrl)return;
+  const k=e.key.toLowerCase();
+  if(k==='z'&&!e.shiftKey){e.preventDefault();desfazer();}
+  else if(k==='y'||(k==='z'&&e.shiftKey)){e.preventDefault();refazer();}
+});
+document.addEventListener('keydown',e=>{
+  if(document.activeElement===ta)return;
+  const ctrl=e.ctrlKey||e.metaKey;
+  if(!ctrl)return;
+  const k=e.key.toLowerCase();
+  if(k==='z'&&!e.shiftKey){e.preventDefault();desfazer();}
+  else if(k==='y'||(k==='z'&&e.shiftKey)){e.preventDefault();refazer();}
+});
+atualizarBotoesHist();
+
+/* ---------- botões de cena ---------- */
+function proximoNumero(tipo){
+  let max=0;
+  ta.value.split(/\r?\n/).forEach(l=>{
+    const n=normLabel(l.trim());
+    if(n&&n.type===tipo&&n.num!=null&&n.num>max)max=n.num;
+  });
+  return max+1;
+}
+let ultimaPos=null;   /* onde o cursor estava antes de o clique tirar o foco do campo */
+['keyup','mouseup','focus','click','select'].forEach(function(ev){
+  ta.addEventListener(ev,function(){ ultimaPos={ini:ta.selectionStart,fim:ta.selectionEnd}; });
+});
+function inserirMarcador(tipo){
+  const label=`${tipo} ${String(proximoNumero(tipo)).padStart(2,'0')}`;
+  const texto=ta.value;
+  const cur = ultimaPos || {ini:texto.length,fim:texto.length};
+  const ini=Math.min(cur.ini,texto.length), fim=Math.min(cur.fim,texto.length);
+  const antes=texto.slice(0,ini).replace(/[ \t]+$/,'');
+  const depois=texto.slice(fim).replace(/^[ \t]+/,'');
+  const pre = antes==='' ? '' : (antes.endsWith('\n\n') ? '' : antes.endsWith('\n') ? '\n' : '\n\n');
+  const pos = depois==='' ? '\n' : (depois.startsWith('\n') ? '\n' : '\n\n');
+  const novo=antes+pre+label+pos+depois;
+  const cursor=(antes+pre+label+'\n').length;
+  setInput(novo);
+  ta.focus();
+  ta.setSelectionRange(cursor,cursor);
+  ultimaPos={ini:cursor,fim:cursor};
+}
+/* renumera todas as cenas na ordem em que aparecem no texto */
+function renumerar(){
+  const contador={};
+  const linhas=ta.value.split(/\r?\n/).map(linha=>{
+    const n=normLabel(linha.trim());
+    if(!n)return linha;
+    contador[n.type]=(contador[n.type]||0)+1;
+    const novo=`${n.type} ${String(contador[n.type]).padStart(2,'0')}`;
+    return n.resto ? novo+' '+n.resto : novo;
+  });
+  setInput(linhas.join('\n'));
+}
+
+/* ---------- parse ---------- */
+function parse(raw){
+  const lines=raw.split(/\r?\n/);
+  const scenes=[];
+  let atual=null;
+  let secao=null;
+  lines.forEach(rawLine=>{
+    const l=rawLine.trim();
+    const mSec=l.match(/^ROTEIRO\s+DO\s+(.+)$/i);
+    if(mSec){ secao=mSec[1].trim().toUpperCase(); atual=null; return; }   /* comeca outro roteiro */
+    const n=normLabel(l);                       /* rotulo de cena tem prioridade sobre o filtro */
+    if(!n && l!=='' && linhaIgnorada(l))return;
+    if(n){
+      /* "TAB 01 Ensinando Guitarra Base - 50 BPM": o titulo da tablatura e metadado */
+      if(n.resto && /-\s*\d+\s*bpm\s*$/i.test(n.resto))n.resto='';
+      /* o mesmo rotulo repetido logo abaixo (TAB 01 ... TAB 1) e referencia da tablatura, nao cena nova */
+      if(atual && n.label===atual.label && atual.text.join('').trim()===''){
+        if(n.resto)atual.text.push(n.resto);
+        return;
+      }
+      atual={type:n.type,num:n.num,label:n.label,secao:secao,text:[]};
+      if(n.resto)atual.text.push(n.resto);
+      scenes.push(atual);
+    } else if(atual){
+      atual.text.push(rawLine.trim());
+    }
+  });
+  scenes.forEach(s=>{
+    while(s.text.length && s.text[0]==='')s.text.shift();
+    while(s.text.length && s.text[s.text.length-1]==='')s.text.pop();
+    const cleaned=[]; let prevEmpty=false;
+    s.text.forEach(t=>{
+      if(t===''){ if(!prevEmpty)cleaned.push(''); prevEmpty=true; }
+      else { cleaned.push(t); prevEmpty=false; }
+    });
+    s.text=cleaned;
+  });
+  return scenes;
+}
+/* ordena pela ordem oficial; tipos ausentes simplesmente não aparecem */
+function ordenarFluxo(scenes){
+  /* primeiro separa por roteiro (YouTube, site...), depois aplica a ordem oficial dentro de cada um */
+  const ordemSecao=[];
+  scenes.forEach(function(s){ const k=s.secao||''; if(ordemSecao.indexOf(k)<0)ordemSecao.push(k); });
+  return scenes.map(function(s,i){return {s:s,i:i};}).sort(function(a,b){
+    const sa=ordemSecao.indexOf(a.s.secao||''), sb=ordemSecao.indexOf(b.s.secao||'');
+    if(sa!==sb)return sa-sb;
+    const ia=ORDEM.indexOf(a.s.type), ib=ORDEM.indexOf(b.s.type);
+    if(ia!==ib)return (ia<0?99:ia)-(ib<0?99:ib);
+    const na=a.s.num==null?0:a.s.num, nb=b.s.num==null?0:b.s.num;
+    if(na!==nb)return na-nb;
+    return a.i-b.i;
+  }).map(function(o){return o.s;});
+}
+
+function processar(){
+  const raw=ta.value;
+  if(!raw.trim()){ document.getElementById('status').innerHTML='<div class="status err">Cole o roteiro primeiro.</div>'; return; }
+  const scenes=parse(raw);
+  if(!scenes.length){ document.getElementById('status').innerHTML='<div class="status err">Não reconheci nenhuma cena. Confere se o rótulo (ex: LOC 01) está numa linha própria.</div>'; return; }
+
+  const secoes=[];
+  scenes.forEach(function(sc){ if(sc.secao && secoes.indexOf(sc.secao)<0)secoes.push(sc.secao); });
+  const doFiltro = scenes;
+
+  const exportaveis=doFiltro.filter(s=>s.type==='LOC'||s.type==='ACORDES');
+  const semTexto=exportaveis.filter(s=>s.text.join('').trim()==='');
+  const locs=exportaveis.filter(s=>s.type==='LOC');
+  const acs=exportaveis.filter(s=>s.type==='ACORDES');
+  const ordered=locs.concat(acs);
+
+  STATE={ordered:ordered,flux:ordenarFluxo(doFiltro),todas:scenes,secoes:secoes};
+
+  const st=document.getElementById('status');
+  st.innerHTML = semTexto.length
+    ? `<div class="status warn">⚠ ${semTexto.length} cena(s) sem texto: ${semTexto.map(s=>s.label).join(', ')}. Confere se esqueceu de colar a fala.</div>`
+    : '';
+
+  st.innerHTML+=conferencia(raw,exportaveis,doFiltro);
+
+  const counts={};
+  doFiltro.forEach(s=>counts[s.type]=(counts[s.type]||0)+1);
+  const c=document.getElementById('counts'); c.innerHTML='';
+  ORDEM.filter(t=>counts[t]).forEach(t=>{
+    c.innerHTML+=`<div class="chip">${t}<span class="n">${counts[t]}</span></div>`;
+  });
+
+  document.getElementById('results').style.display='block';
+  renderPreview();
+  atualizarFluxo();
+}
+
+/* ================= conferencia de integridade ================= */
+/* le de volta o RTF gerado e conta os caracteres de fala que ficaram nele */
+function contarTextoRtf(){
+  const rtf=buildRtf();
+  let n=0;
+  rtf.split('\n').forEach(l=>{
+    if(!l.startsWith('\\pard '))return;
+    let t=l.slice(6);
+    if(!t.endsWith('\\par'))return;
+    t=t.slice(0,-4);
+    if(t.startsWith('{\\b '))return;                 /* rotulo da cena */
+    t=t.replace(/\\u\d+\?/g,'x').replace(/\\([\\{}])/g,'$1');  /* desfaz os escapes */
+    n+=t.length;
+  });
+  return n;
+}
+function conferencia(raw,exportaveis,scenes){
+  const dots=PONTOS_RESPIRO;
+  const noRoteiro=exportaveis.reduce((a,s)=>a+s.text.join('').length,0);
+  const gravado=contarTextoRtf()-dots*2;             /* tira os pontos de respiro */
+  /* cabecalho: o que vem antes da primeira cena, ja sem as linhas de metadado */
+  let orfao=0, amostra='';
+  for(const l of raw.split(/\r?\n/)){
+    const t=l.trim();
+    if(t!=='' && linhaIgnorada(t))continue;
+    if(normLabel(t))break;
+    if(t && amostra.length<60)amostra+=(amostra?' ':'')+t;
+    orfao+=t.length;
+  }
+  const vistos={}, repetidos=[];
+  scenes.forEach(function(sc){
+    const chave=(sc.secao||'')+'|'+sc.label;
+    vistos[chave]=(vistos[chave]||0)+1;
+    if(vistos[chave]===2)repetidos.push(sc.label);
+  });
+  let out='';
+  if(gravado===noRoteiro){
+    out+='<div class="status ok">\u2713 Confer\u00eancia: '+noRoteiro+' caracteres de fala no roteiro colado, '+gravado+' no arquivo do TP. Bateu.</div>';
+  } else {
+    out+='<div class="status err">\u26a0 Confer\u00eancia falhou: '+noRoteiro+' caracteres no roteiro e '+gravado+' no arquivo. N\u00e3o use este arquivo e me avise.</div>';
+  }
+  if(orfao){
+    out+='<div class="status warn">Cabeçalho ignorado: '+orfao+' caracteres antes da primeira cena ('+escapeHtml(amostra)+'…). Se aí tiver fala, ponha um rótulo antes dela.</div>';
+  }
+  if(repetidos.length){
+    out+='<div class="status err">⚠ Rótulos repetidos: '+escapeHtml(repetidos.join(', '))+'. Parece que você colou dois roteiros juntos — cole um de cada vez, ou use Renumerar.</div>';
+  }
+  return out;
+}
+function renderPreview(){
+  const dots=PONTOS_RESPIRO;
+  const pv=document.getElementById('tpPreview');
+  let html='';
+  for(let i=0;i<dots;i++)html+='<span class="dot">.</span>\n';
+  let secPrev=null;
+  STATE.ordered.forEach(s=>{
+    if(s.secao && s.secao!==secPrev && secPrev!==null){
+      html+=`<span class="mk">&lt;&gt; ${escapeHtml(s.secao)}</span>\n\n`;
+    }
+    secPrev=s.secao;
+    html+=`<span class="mk">&lt;&gt; ${s.label}</span>\n`;
+    html+=escapeHtml(s.text.join('\n'))+'\n\n';
+  });
+  for(let i=0;i<dots;i++)html+='<span class="dot">.</span>\n';
+  pv.innerHTML=html;
+  document.getElementById('tpMeta').textContent=`${STATE.ordered.length} cenas no arquivo`;
+}
+/* ---------- RTF ---------- */
+function rtfEscape(s){let out='';for(const ch of s){const c=ch.codePointAt(0);if(ch==='\\'||ch==='{'||ch==='}')out+='\\'+ch;else if(c>127)out+='\\u'+c+'?';else out+=ch;}return out;}
+function buildRtf(){
+  const dots=PONTOS_RESPIRO;
+  const par=(t,b)=>'\\pard '+(b?('{\\b '+rtfEscape(t)+'}'):rtfEscape(t))+'\\par\n';
+  let body='';
+  for(let i=0;i<dots;i++)body+=par('.');
+  let secAnterior=null;
+  STATE.ordered.forEach(s=>{
+    if(s.secao && s.secao!==secAnterior && secAnterior!==null){
+      body+=par('<> '+s.secao,true);   /* marcador avisando que comeca a outra parte */
+      body+=par('');
+    }
+    secAnterior=s.secao;
+    body+=par('<> '+s.label,true);
+    if(s.text.length===0)body+=par('');
+    else s.text.forEach(line=>body+=par(line));
+    body+=par('');
+  });
+  for(let i=0;i<dots;i++)body+=par('.');
+  return '{\\rtf1\\ansi\\ansicpg1252\\deff0\n{\\fonttbl{\\f0 Segoe UI;}}\n\\viewkind4\\uc1\n\\f0\\fs28\n'+body+'}';
+}
+/* OPCAO TP: minúsculas, sem acento/cedilha/pontuação, espaços/hífens/pontos extras -> underscore, mantém número da aula no início */
+function slugifyAula(nome){
+  if(!nome||!nome.trim())return 'roteiro';
+  let s=nome.trim();
+  s=s.replace(/^aula\s+/i,'');
+  const m=s.match(/^(\d+(?:\.\d+)*)\.?\s*(.*)$/);
+  let numero='', resto=s;
+  if(m){ numero=m[1]; resto=m[2]; }
+  resto=resto.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  resto=resto.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  return numero ? `${numero}_${resto}` : resto;
+}
+function atualizarNomePreview(){
+  const nome=document.getElementById('nomeAula').value;
+  const slug=slugifyAula(nome);
+  const pv=document.getElementById('nomePreview');
+  if(nome.trim()){
+    pv.style.display='block';
+    document.getElementById('nomeTPOut').value=slug;
+    document.getElementById('nomeFluxoOut').value=nome.trim();
+  } else {
+    pv.style.display='none';
+  }
+}
+document.getElementById('nomeAula').addEventListener('input',function(){atualizarNomePreview();atualizarResumos();if(typeof sincronizarChaveFluxo==='function')sincronizarChaveFluxo();});
+
+function copiarCampo(inputId,okId){
+  const el=document.getElementById(inputId);
+  el.select();
+  navigator.clipboard.writeText(el.value).then(()=>flash(okId));
+}
+
+/* o conteudo e RTF por dentro; so o nome termina em .tpp */
+function baixarTpp(){
+  const slug=slugifyAula(document.getElementById('nomeAula').value);
+  const blob=new Blob([buildRtf()],{type:'application/octet-stream'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`${slug}.tpp`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+  flash('tppOk');
+}
+function flash(id){const el=document.getElementById(id);if(!el)return;el.style.display='inline';setTimeout(()=>el.style.display='none',1600);}
+function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function limpar(){
+  bpmDoPdf={ensina:'',toca:''};
+  STATE={ordered:[],flux:[],todas:[],secoes:[]};   /* a tabela do fluxo esvazia na hora */
+  esquecerPastaTP();
+  document.getElementById('pdfStatus').innerHTML='';
+  setInput('');
+  document.getElementById('nomeAula').value='';
+  atualizarNomePreview();
+  document.getElementById('results').style.display='none';
+  document.getElementById('status').innerHTML='';
+  document.getElementById('counts').innerHTML='';
+  atualizarResumos();
+}
+
+function carregarExemplo(){
+  setInput(`LOC 01
+Hoje é dia de groove! Eu to aqui pra te ensinar Acenda o Farol do síndico, o grande Tim Maia!
+
+Essa música não tem violão, mas aqui eu adaptei o arranjo pro nosso instrumento.
+
+TOCA 01
+
+ACORDES 01
+Bora lá! Pra introdução você vai precisar desses acordes
+C7M  B7  Em7  Dm7  G7
+
+Deixa eu te apresentar o ritmo!
+
+RITMO 01
+
+LOC 02
+Depois da introdução aparece a primeira parte, então vamo praticar!
+
+ACORDES 02
+A música fica se repetindo, mas você já aprendeu tudo!`);
+  processar();
+}
+
+/* ================= abas principais ================= */
+function switchMain(t){
+  document.querySelectorAll('.mtab').forEach(el=>el.classList.toggle('active',el.dataset.main===t));
+  document.querySelectorAll('.main-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('main-'+t).classList.add('active');
+}
+
+/* ================= conversao do XML (nativa, sem Python) ================= */
+const ATTRS_VIDEO={"TL.SQTrackShy":"0","TL.SQTrackExpandedHeight":"25","TL.SQTrackExpanded":"0","MZ.TrackTargeted":"1"};
+const ATTRS_AUDIO={"TL.SQTrackAudioKeyframeStyle":"0","TL.SQTrackExpandedHeight":"25","PannerCurrentValue":"0.5","PannerIsInverted":"true","premiereTrackType":"Stereo"};
+const filho=(el,tag)=>{ for(const c of el.children){ if(c.tagName===tag)return c; } return null; };
+
+function converterXml(texto){
+  const doc=new DOMParser().parseFromString(texto,'application/xml');
+  if(doc.getElementsByTagName('parsererror').length) throw new Error('XML inv\u00e1lido ou corrompido.');
+  const root=doc.documentElement;
+
+  /* 1 - zera o timecode da sequencia */
+  const seq=filho(root,'sequence');
+  if(seq){
+    const tc=filho(seq,'timecode');
+    if(tc){
+      const st=filho(tc,'string'); if(st)st.textContent='00:00:00:00';
+      const fr=filho(tc,'frame'); if(fr)fr.textContent='0';
+    }
+  }
+
+  /* 2 - corrige cada clipitem */
+  const clips=Array.from(doc.getElementsByTagName('clipitem'));
+  clips.forEach(ci=>{
+    let ana=filho(ci,'anamorphic');
+    if(!ana){ana=doc.createElement('anamorphic');ci.appendChild(ana);}
+    ana.textContent='FALSE';
+
+    let fd=filho(ci,'fielddominance');
+    if(!fd){fd=doc.createElement('fielddominance');ci.appendChild(fd);}
+    fd.textContent='none';
+
+    const nomeEl=filho(ci,'name'), fileEl=filho(ci,'file');
+    if(fileEl && nomeEl && nomeEl.textContent && nomeEl.textContent.trim()){
+      let alvo=nomeEl.textContent.trim();
+      if(!alvo.toLowerCase().endsWith('.mov')){
+        alvo = alvo.includes('.') ? alvo.replace(/\.[^.]*$/,'.mov') : alvo+'.mov';
+      }
+      const fn=filho(fileEl,'name'); if(fn)fn.textContent=alvo;
+      const pu=filho(fileEl,'pathurl'); if(pu)pu.textContent='file://localhost/'+alvo;
+    }
+
+    const filtros=filho(ci,'filters');
+    if(filtros){
+      Array.from(filtros.getElementsByTagName('effect')).forEach(ef=>{
+        const n=filho(ef,'name'), id=filho(ef,'effectid');
+        if(n && n.textContent && /sizing|transform/i.test(n.textContent)){
+          if(id)id.textContent='basic-motion';
+          n.textContent='Basic Motion';
+        }
+      });
+    }
+
+    if(!filho(ci,'transform')){
+      const t=doc.createElement('transform');
+      [['forward','true'],['motion','true'],['stretch','false']].forEach(([tag,val])=>{
+        const e=doc.createElement(tag); e.textContent=val; t.appendChild(e);
+      });
+      ci.appendChild(t);
+    }
+  });
+
+  /* 3 - atributos das tracks */
+  Array.from(doc.getElementsByTagName('track')).forEach(tr=>{
+    const attrs = tr.getElementsByTagName('channelcount').length ? ATTRS_AUDIO : ATTRS_VIDEO;
+    Object.keys(attrs).forEach(k=>tr.setAttribute(k,attrs[k]));
+  });
+
+  root.setAttribute('version','5');
+  const corpo=new XMLSerializer().serializeToString(doc).replace(/^\s*<\?xml[^>]*\?>\s*/i,'');
+  return '<?xml version="1.0" encoding="UTF-8"?>\n'+corpo;
+}
+function nomeConvertido(nomeOriginal){
+  return nomeOriginal.replace(/\.xml$/i,'')+'_corrigido.xml';
+}
+
+/* ================= acesso a pastas ================= */
+const TEM_FS = typeof window.showDirectoryPicker === 'function';
+let pastaAula=null, pastaTP=null;
+
+function idbAbrir(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open('cifra-pastas',1);
+    r.onupgradeneeded=()=>r.result.createObjectStore('h');
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function guardar(chave,valor){
+  try{
+    const db=await idbAbrir();
+    await new Promise((res,rej)=>{
+      const tx=db.transaction('h','readwrite');
+      tx.objectStore('h').put(valor,chave);
+      tx.oncomplete=res; tx.onerror=()=>rej(tx.error);
+    });
+  }catch(e){}
+}
+async function apagarGuardado(chave){
+  try{
+    const db=await idbAbrir();
+    await new Promise(res=>{
+      const tx=db.transaction('h','readwrite');
+      tx.objectStore('h').delete(chave);
+      tx.oncomplete=res; tx.onerror=res;
+    });
+  }catch(e){}
+}
+async function recuperar(chave){
+  try{
+    const db=await idbAbrir();
+    return await new Promise(res=>{
+      const tx=db.transaction('h','readonly');
+      const rq=tx.objectStore('h').get(chave);
+      rq.onsuccess=()=>res(rq.result||null);
+      rq.onerror=()=>res(null);
+    });
+  }catch(e){ return null; }
+}
+async function temPermissao(h,pedir){
+  if(!h)return false;
+  const opt={mode:'readwrite'};
+  try{
+    if(await h.queryPermission(opt)==='granted')return true;
+    if(pedir && await h.requestPermission(opt)==='granted')return true;
+  }catch(e){}
+  return false;
+}
+/* ---- fila: copias pesadas rodam uma de cada vez ----
+   disco e rede nao ficam mais rapidos com varias copias juntas; ficam mais lentos.
+   entao as tarefas pesadas entram numa fila e cada uma roda na velocidade cheia.   */
+let jobsAtivos=0;
+const filaPesada=[];
+let filaOcupada=false;
+
+function enfileirar(tarefa){
+  return new Promise(function(resolve){
+    filaPesada.push({tarefa:tarefa,resolve:resolve});
+    atualizarJobs();
+    tocarFila();
+  });
+}
+async function tocarFila(){
+  if(filaOcupada||!filaPesada.length)return;
+  filaOcupada=true;
+  const item=filaPesada.shift();
+  atualizarJobs();
+  try{ item.resolve(await item.tarefa()); }
+  catch(e){ item.resolve(); }
+  finally{ filaOcupada=false; atualizarJobs(); tocarFila(); }
+}
+function atualizarJobs(){
+  const el=document.getElementById('jobsInfo');
+  if(!el)return;
+  const espera=filaPesada.length;
+  if(jobsAtivos>0||espera>0){
+    let t = jobsAtivos>0 ? 'copiando\u2026' : '';
+    if(espera>0) t += (t?'  ':'') + espera + (espera===1?' na fila':' na fila');
+    el.textContent=t;
+    el.style.display='inline-block';
+    el.classList.add('ativa');
+  } else {
+    el.style.display='none';
+    el.classList.remove('ativa');
+  }
+}
+/* painel: um cartao por aula, com as 4 etapas do processo */
+const ETAPAS=[['premiere','XML \u2192 premiere/'],['sonar','Projeto de \u00e1udio \u2192 sonar/'],['Assets','\u00c1udio exportado \u2192 Assets/'],['fluxo','Fluxo \u2192 raiz']];
+const ICONES={pendente:'\u25cb',fila:'\u22ef',andando:'\u25d4',feito:'\u2713',erro:'\u2715'};
+const painel=new Map();   /* handle da pasta -> {nome, itens} */
+
+function etapa(raiz,chave,estado,detalhe){
+  if(!raiz)return;
+  if(!painel.has(raiz)){
+    painel.set(raiz,{nome:raiz.name,itens:{}});
+    while(painel.size>6) painel.delete(painel.keys().next().value);
+  }
+  painel.get(raiz).itens[chave]={estado:estado,detalhe:detalhe||''};
+  renderPainel();
+}
+function renderPainel(){
+  const el=document.getElementById('painel');
+  if(!el)return;
+  el.innerHTML=Array.from(painel.values()).reverse().map(d=>{
+    const linhas=ETAPAS.map(function(e){
+      const it=d.itens[e[0]]||{estado:'pendente',detalhe:''};
+      return '<div class="etapa '+it.estado+'"><span class="ic">'+ICONES[it.estado]+'</span>'
+           + '<span class="rot">'+e[1]+'</span>'
+           + '<span class="det">'+escapeHtml(it.detalhe)+'</span></div>';
+    }).join('');
+    return '<div class="card-aula"><div class="card-nome">'+escapeHtml(d.nome)+'</div>'+linhas+'</div>';
+  }).join('');
+}
+function msg(id,tipo,texto){
+  const el=document.getElementById(id);
+  if(el)el.innerHTML='<div class="status '+tipo+'">'+escapeHtml(texto)+'</div>';
+}
+function explicarErro(e){
+  const n=e&&e.name;
+  if(n==='NotFoundError')return 'N\u00e3o consegui ler a origem. Isso costuma acontecer ao arrastar de uma pasta da rede ou do iCloud: use o bot\u00e3o "Escolher pasta\u2026" da pr\u00f3pria \u00e1rea, ou copie o item para o PC antes.';
+  if(n==='NotAllowedError')return 'Permiss\u00e3o negada. Clique em "Escolher pasta da aula" para liberar o acesso.';
+  if(n==='SecurityError')return 'O navegador bloqueou o acesso. Confira se a p\u00e1gina foi aberta pelo link do site, no Chrome ou Edge.';
+  return 'Erro: '+((e&&e.message)?e.message:e);
+}
+function marcarPastaAula(){
+  const el=document.getElementById('pastaAulaNome');
+  if(pastaAula){ el.textContent=pastaAula.name; el.classList.add('ativa'); }
+  else { el.textContent='nenhuma pasta escolhida'; el.classList.remove('ativa'); }
+}
+async function escolherPastaAula(){
+  if(!TEM_FS){ msg('pastaStatus','err','Este recurso precisa do Chrome ou Edge, com a p\u00e1gina aberta pelo link do site.'); return; }
+  try{
+    pastaAula=await window.showDirectoryPicker({mode:'readwrite',id:'pastaAula'});
+    await guardar('pastaAula',pastaAula);
+    marcarPastaAula();
+    msg('pastaStatus','ok','Pasta conectada: '+pastaAula.name);
+    ETAPAS.forEach(e=>{ if(!painel.has(pastaAula)||!painel.get(pastaAula).itens[e[0]]) etapa(pastaAula,e[0],'pendente',''); });
+  }catch(e){ if(e.name!=='AbortError')msg('pastaStatus','err',explicarErro(e)); }
+}
+/* valida uma pasta especifica: cada tarefa carrega a sua, mesmo que o usuario troque de aula */
+async function garantirPasta(raiz,statusId){
+  statusId=statusId||'pastaStatus';
+  if(!TEM_FS){ msg(statusId,'err','Este recurso precisa do Chrome ou Edge, com a p\u00e1gina aberta pelo link do site.'); return false; }
+  if(!raiz){ msg(statusId,'warn','Escolha a pasta da aula primeiro, na aba "Pasta da aula".'); return false; }
+  if(!(await temPermissao(raiz,true))){ msg(statusId,'warn','Permiss\u00e3o da pasta n\u00e3o liberada. Clique em "Escolher pasta da aula" de novo.'); return false; }
+  return true;
+}
+async function subpastaDe(raiz,caminho){
+  let dir=raiz;
+  for(const parte of caminho){ dir=await dir.getDirectoryHandle(parte,{create:true}); }
+  return dir;
+}
+async function gravar(dir,nome,conteudo){
+  const fh=await dir.getFileHandle(nome,{create:true});
+  const w=await fh.createWritable();
+  await w.write(conteudo);
+  await w.close();
+  /* confere se chegou inteiro */
+  if(conteudo && typeof conteudo.size==='number'){
+    const escrito=await fh.getFile();
+    if(escrito.size!==conteudo.size){
+      throw new Error('"'+nome+'" foi copiado incompleto ('+escrito.size+' de '+conteudo.size+' bytes). Repita a c\u00f3pia deste item.');
+    }
+  }
+}
+/* ---- copia em paralelo ----
+   antes: um arquivo por vez, esperando cada um terminar (lento com muitos arquivos pequenos)
+   agora: monta a lista toda e copia varios ao mesmo tempo                                   */
+const LIMITE_PARALELO=6;
+
+/* modo: 'entrada' (recria a pasta), 'conteudo' (so o que tem dentro), 'soArquivos' (achata tudo) */
+async function planejar(handle,destino,modo,plano){
+  if(handle.kind==='file'){ plano.push({origem:handle,dir:destino,nome:handle.name}); return; }
+  if(modo==='soArquivos'){
+    for await(const f of handle.values()) await planejar(f,destino,'soArquivos',plano);
+    return;
+  }
+  let dir=destino;
+  if(modo!=='conteudo') dir=await destino.getDirectoryHandle(handle.name,{create:true});
+  for await(const f of handle.values()) await planejar(f,dir,'entrada',plano);
+}
+async function copiarPlano(plano,aoAndar){
+  const fila=plano.slice();
+  const total=plano.length;
+  let n=0;
+  const trabalhadores=Array.from({length:Math.min(LIMITE_PARALELO,fila.length)},async()=>{
+    while(fila.length){
+      const t=fila.shift();
+      await gravar(t.dir,t.nome,await t.origem.getFile());
+      n++;
+      if(aoAndar && (n%20===0)) aoAndar(n,total);
+    }
+  });
+  await Promise.all(trabalhadores);
+  return n;
+}
+
+/* ================= achar a pasta de audio export sozinho ================= */
+function normalizaNome(t){ return t.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+async function acharPastas(dir,teste,caminho,achados,prof){
+  if(prof>6)return;
+  for await (const filho of dir.values()){
+    if(filho.kind!=='directory')continue;
+    const nome=normalizaNome(filho.name);
+    if(prof===0 && (nome==='assets'||nome==='premiere'))continue;
+    const trilha=caminho.concat(filho.name);
+    if(teste(nome)) achados.push({handle:filho,caminho:trilha.join('/')});
+    else await acharPastas(filho,teste,trilha,achados,prof+1);
+  }
+}
+async function importarAudioExport(raiz,silencioso,jaNaFila){
+  raiz = raiz || pastaAula;           /* capturado antes de qualquer espera */
+  if(raiz && !jaNaFila) etapa(raiz,'Assets','fila','na fila\u2026');
+  if(!(await garantirPasta(raiz)))return;
+
+  const corpo=async function(){
+    jobsAtivos++; atualizarJobs();
+    etapa(raiz,'Assets','andando','procurando a pasta\u2026');
+    try{
+      let base=raiz, ondeBusquei='a pasta da aula';
+      try{ base=await raiz.getDirectoryHandle('sonar'); ondeBusquei='sonar/'; }catch(e){}
+      let achados=[];
+      await acharPastas(base,n=>n.includes('export')&&n.includes('audio'),[],achados,0);
+      if(!achados.length) await acharPastas(base,n=>n.includes('export'),[],achados,0);
+      if(!achados.length){
+        etapa(raiz,'Assets','erro','n\u00e3o achei pasta com "export" em '+ondeBusquei);
+        return;
+      }
+      const destino=await subpastaDe(raiz,['Assets']);
+      let n=0;
+      for(const a of achados){
+        const plano=[];
+        await planejar(a.handle,destino,'soArquivos',plano);
+        n+=await copiarPlano(plano,function(feitos,total){
+          etapa(raiz,'Assets','andando',feitos+' de '+total+' arquivos');
+        });
+      }
+      etapa(raiz,'Assets','feito',(n===1?'1 arquivo de ':n+' arquivos de ')+achados[0].caminho);
+    }catch(e){ etapa(raiz,'Assets','erro',explicarErro(e)); }
+    finally{ jobsAtivos--; atualizarJobs(); }
+  };
+
+  return jaNaFila ? corpo() : enfileirar(corpo);
+}
+/* ================= zonas de arrastar ================= */
+function ligarZona(idZona,destino,rotulo,opts){
+  opts=opts||{};
+  const dz=document.getElementById(idZona);
+  if(!dz)return;
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('hover');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('hover'));
+  dz.addEventListener('drop',e=>{
+    e.preventDefault();dz.classList.remove('hover');
+    const arquivos=Array.from(e.dataTransfer.files||[]);
+    const itens=Array.from(e.dataTransfer.items||[]).filter(i=>i.kind==='file');
+    if(itens.length && typeof itens[0].getAsFileSystemHandle==='function'){
+      Promise.all(itens.map(i=>i.getAsFileSystemHandle().catch(()=>null)))
+        .then(hs=>processarArquivos(hs.filter(Boolean),arquivos,destino,rotulo,opts));
+    } else {
+      processarArquivos(null,arquivos,destino,rotulo,opts);
+    }
+  });
+  dz.addEventListener('click',ev=>{
+    if(ev.target.closest('.zbtn'))return;
+    const inp=document.createElement('input');
+    inp.type='file'; inp.multiple=true;
+    if(opts.aceita)inp.accept=opts.aceita;
+    inp.onchange=e=>{ if(e.target.files.length)processarArquivos(null,Array.from(e.target.files),destino,rotulo,opts); };
+    inp.click();
+  });
+}
+async function escolherOrigemPasta(destino,rotulo,opts){
+  opts=opts||{};
+  if(!TEM_FS){ msg(opts.statusId||'pastaStatus','err','Este recurso precisa do Chrome ou Edge.'); return; }
+  try{
+    const origem=await window.showDirectoryPicker({mode:'read'});
+    processarArquivos([origem],null,destino,rotulo,opts);
+  }catch(e){ if(e.name!=='AbortError')msg(opts.statusId||'pastaStatus','err',explicarErro(e)); }
+}
+
+async function processarArquivos(handles,arquivos,destino,rotulo,opts){
+  const sid=opts.statusId||'pastaStatus';
+  const raizJob=pastaAula;            /* capturado antes de qualquer espera */
+  const passo=opts.etapa||'sonar';
+  if(raizJob) etapa(raizJob,passo,opts.pesado?'fila':'andando',opts.pesado?'na fila\u2026':'preparando\u2026');
+  if(!(await garantirPasta(raizJob,sid))){ if(raizJob)etapa(raizJob,passo,'pendente',''); return; }
+
+  const corpo=async function(){
+    jobsAtivos++; atualizarJobs();
+    etapa(raizJob,passo,'andando','preparando\u2026');
+    try{
+      const dir=await subpastaDe(raizJob,destino);
+      let n=0;
+      const lista = (handles&&handles.length) ? handles : (arquivos||[]);
+      for(const item of lista){
+        const ehHandle = item && item.kind!==undefined;
+        if(opts.xml){
+          const f = ehHandle ? await item.getFile() : item;
+          if(!/\.xml$/i.test(f.name))continue;
+          const saida=converterXml(await f.text());
+          await gravar(dir,nomeConvertido(f.name),new Blob([saida],{type:'application/xml'}));
+          n++;
+        } else if(opts.renomear){
+          const f = ehHandle ? await item.getFile() : item;
+          const i=f.name.lastIndexOf('.');
+          await gravar(dir,opts.renomear+(i>0?f.name.slice(i):''),f);
+          n++;
+        } else if(ehHandle){
+          const modo = opts.soArquivos ? 'soArquivos' : (opts.conteudo ? 'conteudo' : 'entrada');
+          const plano=[];
+          etapa(raizJob,passo,'andando','lendo a pasta\u2026');
+          await planejar(item,dir,modo,plano);
+          n+=await copiarPlano(plano,function(feitos,total){
+            etapa(raizJob,passo,'andando',feitos+' de '+total+' arquivos');
+          });
+        } else {
+          await gravar(dir,item.name,item);
+          n++;
+        }
+      }
+      if(!n){ etapa(raizJob,passo,'erro','nada foi copiado \u2014 confira o tipo do arquivo'); return; }
+      etapa(raizJob,passo,'feito',n===1?'1 arquivo':n+' arquivos');
+      if(opts.depois) await opts.depois(raizJob,true,true);   /* ja dentro da fila */
+    }catch(e){ etapa(raizJob,passo,'erro',explicarErro(e)); }
+    finally{ jobsAtivos--; atualizarJobs(); }
+  };
+
+  return opts.pesado ? enfileirar(corpo) : corpo();
+}
+
+/* salvar o .tpp direto numa pasta fixa */
+function marcarPastaTP(){
+  const el=document.getElementById('pastaTPNome');
+  if(!el)return;
+  if(pastaTP){ el.textContent=pastaTP.name; el.classList.add('ativa'); }
+  else { el.textContent='vai perguntar onde salvar'; el.classList.remove('ativa'); }
+}
+async function esquecerPastaTP(){
+  pastaTP=null;
+  await apagarGuardado('pastaTP');
+  marcarPastaTP();
+}
+/* trocar=true forca a janela de escolha mesmo que ja exista uma pasta fixada */
+async function salvarTpNaPasta(trocar){
+  if(!TEM_FS){ alert('Este recurso precisa do Chrome ou Edge, com a p\u00e1gina aberta pelo link do site.'); return; }
+  try{
+    if(trocar || !pastaTP || !(await temPermissao(pastaTP,true))){
+      pastaTP=await window.showDirectoryPicker({mode:'readwrite',id:'pastaTP'});
+      await guardar('pastaTP',pastaTP);
+      marcarPastaTP();
+    }
+    const slug=slugifyAula(document.getElementById('nomeAula').value);
+    await gravar(pastaTP,slug+'.tpp',new Blob([buildRtf()],{type:'application/octet-stream'}));
+    flash('tpPastaOk');
+  }catch(e){ if(e.name!=='AbortError')alert('N\u00e3o consegui salvar: '+e.message); }
+}
+
+/* o navegador imprime o titulo da pagina no cabecalho da folha; durante a
+   impressao ele fica vazio, para nao sair nada acima do nome da aula */
+const TITULO_PAGINA=document.title;
+function salvarPdfFluxo(){
+  document.title='';
+  try{ window.print(); }finally{ document.title=TITULO_PAGINA; }
+}
+
+/* ================= limpar por aba ================= */
+/* Cancelar no aviso do navegador para a limpeza; onde nao existe aviso, segue direto. */
+function confirmar(txt){
+  try{ return window.confirm(txt)!==false; }catch(e){ return true; }
+}
+/* zera so o fluxo desta aula — as cenas voltam sozinhas do roteiro */
+function limparFluxo(perguntar){
+  if(perguntar!==false && !confirmar('Apagar tudo que está preenchido no fluxo desta aula?'))return;
+  FLUXO=fluxoVazio(FLUXO.modelo);
+  salvarFluxoLocal();
+  repintarFluxo();
+  flash('fxLimpoOk');
+}
+/* as tres abas de uma vez */
+async function limparTudo(){
+  if(!confirmar('Limpar as três abas? Isso apaga o roteiro, o fluxo preenchido e a pasta escolhida.'))return;
+  limpar();
+  limparFluxo(false);
+  await limparPasta();
+  flash('limpouTudoOk');
+}
+async function limparPasta(){
+  const rodando=jobsAtivos;
+  pastaAula=null;
+  await apagarGuardado('pastaAula');
+  marcarPastaAula();
+  document.getElementById('pastaStatus').innerHTML='';
+  painel.clear(); renderPainel();
+  if(rodando){
+    msg('pastaStatus','warn',rodando+' c\u00f3pia(s) da aula anterior continuam rodando em segundo plano e voltam a aparecer aqui ao terminar.');
+  }
+}
+
+/* ================= atalhos das zonas ================= */
+const origemSonar =()=>escolherOrigemPasta(['sonar'],'sonar/',{conteudo:true});
+
+/* ================= inicializacao ================= */
+ligarZona('dzXml',['premiere'],'premiere/',{xml:true,aceita:'.xml',etapa:'premiere'});
+ligarZona('dzSonar',['sonar'],'sonar/',{conteudo:true,etapa:'sonar',pesado:true,depois:importarAudioExport});
+ligarZona('dzFluxo',[],'na raiz da pasta, como "fluxo"',{renomear:'fluxo',etapa:'fluxo'});
+
+(async function(){
+  if(!TEM_FS)return;
+  const a=await recuperar('pastaAula');
+  if(a){
+    pastaAula=a; marcarPastaAula();
+    if(!(await temPermissao(a,false))){
+      msg('pastaStatus','warn','Pasta lembrada: '+a.name+'. Clique em "Escolher pasta da aula" para liberar o acesso nesta sess\u00e3o.');
+    }
+  }
+  const t=await recuperar('pastaTP');
+  if(t)pastaTP=t;
+  marcarPastaTP();
+})();
+
+/* ================= sanfonas ================= */
+function toggleAcc(id){
+  const el=document.getElementById(id);
+  if(el)el.classList.toggle('aberto');
+}
+function atualizarResumos(){
+  const t=ta.value.trim();
+  const rr=document.getElementById('resRoteiro');
+  if(rr){
+    if(!t){ rr.textContent='vazio'; }
+    else {
+      const cenas=parse(ta.value).length;
+      rr.textContent = t.length+' caracteres · '+cenas+(cenas===1?' cena':' cenas');
+    }
+  }
+}
+
+/* ================= leitura do PDF ================= */
+const PDFJS_BASE='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/';
+let pdfjsCarregando=null;
+function carregarScript(url){
+  return new Promise(function(res,rej){
+    const sc=document.createElement('script');
+    sc.src=url;
+    sc.onload=function(){res();};
+    sc.onerror=function(){rej(new Error('Não consegui carregar o leitor de PDF. Confira a internet e tente de novo — ou cole o roteiro à mão.'));};
+    document.head.appendChild(sc);
+  });
+}
+/* o pdf.js recusa um worker de outra origem e cai no "fake worker", que trava a página.
+   baixar o worker e servi-lo como blob local resolve.                                   */
+async function prepararWorker(){
+  const opcoes=window.pdfjsLib.GlobalWorkerOptions;
+  /* em arquivo local (file://) o navegador recusa worker de blob; nem tenta */
+  if(location.protocol!=='file:'){
+    try{
+      const r=await fetch(PDFJS_BASE+'pdf.worker.min.js');
+      if(!r.ok)throw new Error('http '+r.status);
+      const codigo=await r.text();
+      opcoes.workerSrc=URL.createObjectURL(new Blob([codigo],{type:'application/javascript'}));
+      return;
+    }catch(e){}
+  }
+  if(!opcoes.workerSrc)opcoes.workerSrc=PDFJS_BASE+'pdf.worker.min.js';
+}
+/* escada de tentativas: worker local (rapido) -> worker do CDN -> sem worker (lento, mas sempre abre) */
+async function abrirPdf(lib,dados){
+  const tentativas=[null, PDFJS_BASE+'pdf.worker.min.js', ''];
+  let ultimoErro=null;
+  for(const alvo of tentativas){
+    if(alvo!==null)lib.GlobalWorkerOptions.workerSrc=alvo;
+    try{ return await lib.getDocument({data:dados.slice(0)}).promise; }
+    catch(e){ ultimoErro=e; }
+  }
+  throw ultimoErro;
+}
+let pdfjsPronto=false;
+function carregarPdfJs(){
+  if(pdfjsPronto && window.pdfjsLib)return Promise.resolve(window.pdfjsLib);
+  if(pdfjsCarregando)return pdfjsCarregando;
+  pdfjsCarregando=(async function(){
+    if(!window.pdfjsLib)await carregarScript(PDFJS_BASE+'pdf.min.js');
+    if(!window.pdfjsLib)throw new Error('O leitor de PDF foi baixado mas n\u00e3o ficou dispon\u00edvel. Recarregue a p\u00e1gina com Ctrl+F5.');
+    try{ await prepararWorker(); }catch(e){}
+    pdfjsPronto=true;
+    return window.pdfjsLib;
+  })().catch(function(e){ pdfjsCarregando=null; throw e; });
+  return pdfjsCarregando;
+}
+/* remonta as linhas do PDF pela posicao vertical dos pedacos de texto */
+function linhasDaPagina(itens){
+  const grupos=[];
+  itens.forEach(function(i){
+    if(!i.str)return;
+    const y=i.transform[5];
+    let g=null;
+    for(const cand of grupos){ if(Math.abs(cand.y-y)<2.5){ g=cand; break; } }
+    if(!g){ g={y:y,partes:[]}; grupos.push(g); }
+    g.partes.push({x:i.transform[4],s:i.str,w:i.width||0});
+  });
+  grupos.sort(function(a,b){ return b.y-a.y; });            /* topo primeiro */
+  const linhas=grupos.map(function(g){
+    g.partes.sort(function(a,b){ return a.x-b.x; });
+    let txt='', fim=null;
+    g.partes.forEach(function(o){
+      if(fim!==null && o.x-fim>1 && !/\s$/.test(txt) && !/^\s/.test(o.s)) txt+=' ';
+      txt+=o.s; fim=o.x+o.w;
+    });
+    return {y:g.y,texto:txt.replace(/\s+/g,' ').trim()};
+  });
+  /* espaco maior que o normal entre linhas = paragrafo */
+  const saltos=[];
+  for(let i=1;i<linhas.length;i++) saltos.push(linhas[i-1].y-linhas[i].y);
+  const ordenados=saltos.slice().sort(function(a,b){return a-b;});
+  const tipico=ordenados.length?ordenados[Math.floor(ordenados.length/2)]:0;
+  const saida=[];
+  linhas.forEach(function(l,i){
+    if(i>0 && tipico>0 && (linhas[i-1].y-l.y)>tipico*1.6) saida.push('');
+    saida.push(l.texto);
+  });
+  return saida;
+}
+async function textoDoPdf(file){
+  const lib=await carregarPdfJs();
+  const dados=new Uint8Array(await file.arrayBuffer());
+  const doc=await abrirPdf(lib,dados);
+  const tudo=[];
+  for(let p=1;p<=doc.numPages;p++){
+    const pagina=await doc.getPage(p);
+    const tc=await pagina.getTextContent();
+    if(p>1)tudo.push('');
+    tudo.push.apply(tudo,linhasDaPagina(tc.items));
+  }
+  return tudo.join('\n');
+}
+/* devolve so as cenas e as falas, sem cabecalho nem metadado do PDF */
+function roteiroLimpo(scenes){
+  const partes=[]; let sec=null;
+  scenes.forEach(function(sc){
+    if(sc.secao && sc.secao!==sec){ if(partes.length)partes.push(''); partes.push('ROTEIRO DO '+sc.secao); partes.push(''); sec=sc.secao; }
+    partes.push(sc.label);
+    if(sc.text.length)partes.push(sc.text.join('\n'));
+    partes.push('');
+  });
+  return partes.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+}
+/* nome da aula: vem depois de "Nome:" no cabecalho */
+function nomeDoRoteiro(texto){
+  const m=texto.match(/Nome\s*:\s*(.+?)(?:\s{2,}|\s+Data\s*:|\s+Bpm\b|$)/im);
+  return m?m[1].trim():'';
+}
+function msgPdf(tipo,txt){
+  const el=document.getElementById('pdfStatus');
+  if(el)el.innerHTML='<div class="status '+tipo+'">'+escapeHtml(txt)+'</div>';
+}
+function carregarTextoRoteiro(texto,nome){
+  setInput(texto);
+  if(nome){
+    document.getElementById('nomeAula').value=nome;
+    atualizarNomePreview();
+  }
+  atualizarResumos();
+  processar();
+}
+async function receberPdf(file){
+  try{
+    await lerPdfEMontar(file);
+  }catch(e){
+    msgPdf('err','Falhou ao ler o PDF: '+((e&&e.message)?e.message:e)+'. Se continuar, cole o roteiro à mão.');
+    try{ console.error('receberPdf',e); }catch(x){}
+  }
+}
+async function lerPdfEMontar(file){
+  if(!file)return;
+  if(!/\.pdf$/i.test(file.name)){ msgPdf('err','Isso não parece um PDF. Se o roteiro estiver em outro formato, cole o texto à mão.'); return; }
+  msgPdf('warn','Lendo o PDF…');
+  const texto=await textoDoPdf(file);
+  if(!texto.trim()){ msgPdf('err','O PDF não tem texto selectável — parece ser digitalizado. Cole o roteiro à mão.'); return; }
+
+  const nome=nomeDoRoteiro(texto);
+  bpmDoPdf=lerBpm(texto);                                  /* antes de descartar o cabecalho */
+  carregarTextoRoteiro(roteiroLimpo(parse(texto)),nome);   /* so cenas e falas vao pro campo */
+  const inst=instrutorPeloNome(apresentadorDoRoteiro(texto));
+  if(inst){ FLUXO.instrutor=inst; const sel=document.getElementById('fxInstrutor'); if(sel)sel.value=inst; aplicarInstrumentoPadrao(); salvarFluxoLocal(); }
+  const secoes=(STATE.secoes||[]);
+  const porSecao=secoes.map(function(sec){
+    return sec+' ('+STATE.todas.filter(function(c){return c.secao===sec;}).length+')';
+  });
+  let resumo='PDF lido';
+  if(nome)resumo+=' — aula "'+nome+'"';
+  resumo+='. ';
+  if(secoes.length>1){
+    resumo+='Conferi os '+secoes.length+' roteiros do arquivo e juntei todos: '+porSecao.join(' + ')
+          +' = '+STATE.todas.length+' cenas, cada roteiro com a sua numeração.';
+  } else {
+    resumo+=STATE.todas.length+' cenas lidas.';
+  }
+  if(!nome)resumo+=' Não achei o nome da aula no cabeçalho — preencha o campo "Nome da aula".';
+  msgPdf(nome?'ok':'warn',resumo);
+}
+
+ligarZonaPdf();
+atualizarResumos();
+function ligarZonaPdf(){
+  const dz=document.getElementById('dzPdf');
+  if(!dz)return;
+  dz.addEventListener('dragover',function(e){e.preventDefault();dz.classList.add('hover');});
+  dz.addEventListener('dragleave',function(){dz.classList.remove('hover');});
+  dz.addEventListener('drop',function(e){
+    e.preventDefault();dz.classList.remove('hover');
+    if(e.dataTransfer.files.length)receberPdf(e.dataTransfer.files[0]);
+  });
+  dz.addEventListener('click',function(){
+    const inp=document.createElement('input');
+    inp.type='file'; inp.accept='.pdf';
+    inp.onchange=function(e){ if(e.target.files.length)receberPdf(e.target.files[0]); };
+    inp.click();
+  });
+}
+
+/* ================= aba Fluxo ================= */
+const INSTRUTORES=['','Vaz','Caico','Vini','Noel','Fof\u00e3o','Tarsius'];
+/* instrutor que toca sempre o mesmo instrumento */
+const INSTRUMENTO_PADRAO={'Vini':'Guitarra','Tarsius':'Guitarra','Fof\u00e3o':'Viol\u00e3o','Vaz':'Viol\u00e3o'};
+const TIPOS=['','Vídeo aula','Desafio','Review','Editorial','Academy','Insert'];
+const INSTRUMENTOS=['','Guitarra','Violão','Teclado','Outro'];
+const ESTUDIOS=['','A','B','C'];
+const VIOLAO_ACO=['RX 320','RX 220'];
+const VIOLAO_NYLON=['RX 210','RX 216','RX 515','RX 621'];
+const GUITARRA_PHX=['Les Paul AC-1 vermelha','TL2-ALV vermelha','ST-2 creme','ST-2 azul','STH ALV preta'];
+const CORES_DIARIA={1:'1ª',2:'2ª',3:'3ª'};
+const PRODUTORAS=['Bruna','Samira'];
+
+function fluxoVazio(modelo){
+  return {titulo:'',instrutor:'',tipo:'',instrumento:'',estudio:'',
+          diarias:[{data:'',obs:'',produtora:[],outra:''},
+                   {data:'',obs:'',produtora:[],outra:''},
+                   {data:'',obs:'',produtora:[],outra:''}],
+          modelo:modelo||'padrao',qtdDiarias:10,dias:[],arqOrigens:{},
+          cenas:{},arquivos:{},bpmEnsina:'',bpmToca:'',
+          violao:[],violaoLivre:'',guitarra:[],guitarraLivre:'',obs:''};
+}
+let FLUXO=fluxoVazio('padrao');
+let pastaFluxo=null;
+
+function chaveFluxo(){
+  const n=document.getElementById('nomeAula').value.trim();
+  return 'fluxo:'+(n?slugifyAula(n):'sem-nome');
+}
+function salvarFluxoLocal(){
+  try{ localStorage.setItem(salvarFluxoLocal.chaveForcada||chaveFluxo(),JSON.stringify(FLUXO)); }catch(e){}
+}
+let chaveAtualFluxo=null;
+function carregarFluxoLocal(){
+  try{
+    const bruto=localStorage.getItem(chaveFluxo());
+    if(bruto){ const d=JSON.parse(bruto); if(d&&typeof d==='object')FLUXO=Object.assign(FLUXO,d); }
+  }catch(e){}
+  normalizarFluxo();
+  chaveAtualFluxo=chaveFluxo();
+}
+/* versoes antigas guardavam a produtora como texto; agora e lista */
+function normalizarFluxo(){
+  if(!Array.isArray(FLUXO.diarias))FLUXO.diarias=[{},{},{}];
+  for(let i=0;i<3;i++){
+    const d=FLUXO.diarias[i]||(FLUXO.diarias[i]={});
+    if(typeof d.produtora==='string')d.produtora = d.produtora ? [d.produtora] : [];
+    if(!Array.isArray(d.produtora))d.produtora=[];
+    if(typeof d.data!=='string')d.data='';
+    if(typeof d.obs!=='string')d.obs='';
+    if(typeof d.outra!=='string')d.outra='';
+  }
+}
+/* o nome da aula mudou: se ja existe fluxo salvo pra ela, recupera; senao, leva o que esta na tela */
+function sincronizarChaveFluxo(){
+  const nova=chaveFluxo();
+  if(nova===chaveAtualFluxo)return;
+  salvarFluxoLocal.chaveForcada=chaveAtualFluxo;
+  salvarFluxoLocal();
+  salvarFluxoLocal.chaveForcada=null;
+  chaveAtualFluxo=nova;
+  let salvo=null;
+  try{ const b=localStorage.getItem(nova); if(b)salvo=JSON.parse(b); }catch(e){}
+  if(salvo && typeof salvo==='object'){ FLUXO=Object.assign(FLUXO,salvo); normalizarFluxo(); repintarFluxo(); }
+  else salvarFluxoLocal();
+}
+/* redesenha a aba inteira com o FLUXO atual */
+function repintarFluxo(){
+  document.getElementById('fxTitulo').value=FLUXO.titulo||'';
+  document.getElementById('fxInstrutor').value=FLUXO.instrutor||'';
+  document.getElementById('fxTipo').value=FLUXO.tipo||'';
+  document.getElementById('fxInstrumento').value=FLUXO.instrumento||'';
+  document.getElementById('fxEstudio').value=FLUXO.estudio||'';
+  document.getElementById('fxBpmEnsina').value=FLUXO.bpmEnsina||'';
+  document.getElementById('fxBpmToca').value=FLUXO.bpmToca||'';
+  document.getElementById('fxViolaoLivre').value=FLUXO.violaoLivre||'';
+  document.getElementById('fxGuitarraLivre').value=FLUXO.guitarraLivre||'';
+  document.getElementById('fxObs').value=FLUXO.obs||'';
+  document.querySelectorAll('#fxViolaoAco .fx-chip,#fxViolaoNylon .fx-chip').forEach(function(c){
+    c.classList.toggle('on',FLUXO.violao.indexOf(c.textContent)>=0); });
+  document.querySelectorAll('#fxGuitarraPhx .fx-chip').forEach(function(c){
+    c.classList.toggle('on',FLUXO.guitarra.indexOf(c.textContent)>=0); });
+  renderDiarias(); renderFluxoCenas(); renderArquivos();
+  if(typeof aplicarModelo==='function')aplicarModelo();
+}
+function opcoes(sel,lista,valor){
+  sel.innerHTML=lista.map(function(o){
+    return '<option value="'+escapeHtml(o)+'"'+(o===valor?' selected':'')+'>'+escapeHtml(o||'—')+'</option>';
+  }).join('');
+}
+/* Apresentador do roteiro -> Instrutor do fluxo */
+function apresentadorDoRoteiro(texto){
+  const m=texto.match(/Apresentador\s*:\s*(.+?)(?:\s{2,}|\s+Bpm\b|\s+Data\s*:|$)/im);
+  return m?m[1].trim():'';
+}
+function instrutorPeloNome(nome){
+  if(!nome)return '';
+  const n=normalizaNome(nome);
+  for(const i of INSTRUTORES){
+    if(!i)continue;
+    if(n.indexOf(normalizaNome(i))>=0)return i;
+  }
+  if(/vinicius|vinicio/.test(n))return 'Vini';
+  return '';
+}
+function ligarCampo(id,chave){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.addEventListener('input',function(){ FLUXO[chave]=el.value; salvarFluxoLocal(); });
+  el.addEventListener('change',function(){ FLUXO[chave]=el.value; salvarFluxoLocal(); });
+}
+function montarChips(idCaixa,lista,campo){
+  const cx=document.getElementById(idCaixa);
+  if(!cx)return;
+  lista.forEach(function(item){
+    const b=document.createElement('button');
+    b.className='fx-chip'+(FLUXO[campo].indexOf(item)>=0?' on':'');
+    b.textContent=item;
+    b.onclick=function(){
+      const i=FLUXO[campo].indexOf(item);
+      if(i>=0)FLUXO[campo].splice(i,1); else FLUXO[campo].push(item);
+      b.classList.toggle('on');
+      salvarFluxoLocal();
+    };
+    cx.appendChild(b);
+  });
+}
+function renderDiarias(){
+  const cx=document.getElementById('fxDiarias');
+  if(!cx)return;
+  normalizarFluxo();        /* vale para qualquer caminho, inclusive troca de aula */
+  cx.innerHTML='';
+  [0,1,2].forEach(function(i){
+    const d=document.createElement('div');
+    d.innerHTML='<label>'+(i+1)+'ª diária — data de gravação</label>'
+      +'<input type="text" class="fx-data" placeholder="__/__/2026" value="'+escapeHtml(FLUXO.diarias[i].data||'')+'">'
+      +'<label style="margin-top:9px">Produtora audiovisual</label>'
+      +'<div class="fx-chips fx-prod"></div>';
+    const campoData=d.querySelector('.fx-data');
+    campoData.addEventListener('input',function(){FLUXO.diarias[i].data=campoData.value;salvarFluxoLocal();});
+    campoData.addEventListener('blur',function(){
+      const formatada=formatarData(campoData.value);
+      if(formatada!==campoData.value){ campoData.value=formatada; FLUXO.diarias[i].data=formatada; salvarFluxoLocal(); }
+    });
+    campoData.addEventListener('keydown',function(e){ if(e.key==='Enter')campoData.blur(); });
+    const caixa=d.querySelector('.fx-prod');
+    PRODUTORAS.forEach(function(nome){
+      const b=document.createElement('button');
+      b.className='fx-chip'+(FLUXO.diarias[i].produtora.indexOf(nome)>=0?' on':'');
+      b.textContent=nome;
+      b.onclick=function(){
+        const lista=FLUXO.diarias[i].produtora;
+        const k=lista.indexOf(nome);
+        if(k>=0)lista.splice(k,1); else lista.push(nome);   /* mais de uma pode ficar marcada */
+        b.classList.toggle('on',lista.indexOf(nome)>=0);
+        salvarFluxoLocal();
+      };
+      caixa.appendChild(b);
+    });
+    cx.appendChild(d);
+  });
+}
+/* aceita 51026, 051026, 5102026, 05/10/26... e devolve 05/10/2026 */
+function formatarData(bruto){
+  const d=(bruto||'').replace(/\D/g,'');
+  if(!d)return bruto||'';
+  const anoAtual=String(new Date().getFullYear());
+  const cortes={3:[[1,2]],4:[[2,2]],5:[[1,2,2],[2,1,2]],6:[[2,2,2]],7:[[1,2,4],[2,1,4]],8:[[2,2,4]]}[d.length];
+  if(!cortes)return bruto;
+  for(const c of cortes){
+    let i=0; const partes=c.map(function(n){ const p=d.substr(i,n); i+=n; return p; });
+    let dia=partes[0], mes=partes[1], ano=partes[2]||anoAtual.slice(2);
+    const nd=+dia, nm=+mes;
+    if(nd<1||nd>31||nm<1||nm>12)continue;
+    if(ano.length===2)ano=anoAtual.slice(0,2)+ano;
+    return String(nd).padStart(2,'0')+'/'+String(nm).padStart(2,'0')+'/'+ano;
+  }
+  return bruto;
+}
+function chaveCena(sc,i){ return (sc.secao||'-')+'|'+sc.label+'|'+i; }
+
+function renderFluxoCenas(){
+  const tb=document.getElementById('fxCenas');
+  if(!tb)return;
+  tb.innerHTML='';
+  const cenas=(STATE.flux||[]);      /* ja vem por roteiro e na ordem oficial */
+  const av=document.getElementById('fxAviso');
+  if(!cenas.length){
+    av.innerHTML='<div class="status warn">Nenhuma cena ainda. Suba o roteiro na aba TP que as cenas aparecem aqui.</div>';
+    return;
+  }
+  av.innerHTML='';
+  let secAnterior=null, tipoAnterior=null;
+  cenas.forEach(function(sc,i){
+    if(sc.secao && sc.secao!==secAnterior){
+      if(secAnterior!==null){
+        const dv=document.createElement('tr');
+        dv.className='divisor';
+        dv.innerHTML='<td colspan="6">'+escapeHtml(sc.secao)+'</td>';
+        tb.appendChild(dv);
+      }
+      tipoAnterior=null;
+    } else if(tipoAnterior!==null && sc.type!==tipoAnterior){
+      const vz=document.createElement('tr');       /* linha de espaco entre LOC e TAB, etc */
+      vz.className='espaco';
+      vz.innerHTML='<td></td><td></td><td></td><td></td><td class="fx-so-diarias"></td><td></td>';
+      tb.appendChild(vz);
+    }
+    secAnterior=sc.secao; tipoAnterior=sc.type;
+    const k=chaveCena(sc,i);
+    if(!FLUXO.cenas[k])FLUXO.cenas[k]={cam:'',takes:'',obs:'',dataGrav:'',diaria:1};
+    const d=FLUXO.cenas[k];
+    if(typeof d.dataGrav!=='string')d.dataGrav='';
+    const tr=document.createElement('tr');
+    tr.className='d'+(d.diaria||1);
+    tr.innerHTML='<td class="diaria">'+CORES_DIARIA[d.diaria||1]+'</td>'
+      +'<td class="cena">'+escapeHtml(sc.label)+'</td>'
+      +'<td><input type="text" class="fx-cam" inputmode="numeric" maxlength="3" value="'+escapeHtml(d.cam||'')+'"></td>'
+      +'<td><input type="text" value="'+escapeHtml(d.takes||'')+'"></td>'
+      +'<td class="fx-so-diarias"><input type="text" class="fx-datacena" placeholder="__/__/____" value="'+escapeHtml(d.dataGrav||'')+'"></td>'
+      +'<td><input type="text" value="'+escapeHtml(d.obs||'')+'"></td>';
+    const tdD=tr.querySelector('.diaria');
+    tdD.onclick=function(){ aplicarDiaria(i,(d.diaria||1)%3+1); };
+    const ins=tr.querySelectorAll('input');
+    ['cam','takes','dataGrav','obs'].forEach(function(campo,j){
+      ins[j].addEventListener('input',function(){
+        d[campo]=ins[j].value;
+        /* cam e data de gravacao seguem a mesma regra: digitar na primeira linha
+           da cena refaz o grupo inteiro; no meio, mexe so naquela linha */
+        if(campo==='cam' && primeiraDoGrupo(i))espalharCam(i);
+        if(campo==='dataGrav' && primeiraDoGrupo(i))espalharDataCena(i);
+        salvarFluxoLocal();
+      });
+    });
+    const dtCena=tr.querySelector('.fx-datacena');
+    dtCena.addEventListener('blur',function(){
+      const f=formatarData(dtCena.value);
+      if(f!==dtCena.value){ dtCena.value=f; d.dataGrav=f; }
+      if(primeiraDoGrupo(i))espalharDataCena(i);
+      salvarFluxoLocal();
+    });
+    dtCena.addEventListener('keydown',function(e){ if(e.key==='Enter')dtCena.blur(); });
+    tr.dataset.indice=String(i);
+    tb.appendChild(tr);
+  });
+}
+/* 1a diaria: vale para o fluxo inteiro.
+   2a diaria: daquela cena em diante.
+   3a diaria: so a cena clicada (regravacao avulsa).  */
+function aplicarDiaria(indice,valor){
+  const cenas=(STATE.flux||[]);
+  let de=indice, ate=indice;
+  if(valor===1){ de=0; ate=cenas.length-1; }
+  else if(valor===2){ de=indice; ate=cenas.length-1; }
+  for(let j=de;j<=ate;j++){
+    const k=chaveCena(cenas[j],j);
+    if(!FLUXO.cenas[k])FLUXO.cenas[k]={cam:'',takes:'',obs:'',diaria:1};
+    FLUXO.cenas[k].diaria=valor;
+  }
+  salvarFluxoLocal();
+  renderFluxoCenas();
+}
+function primeiraDoGrupo(i){
+  const cenas=(STATE.flux||[]);
+  if(i<=0)return true;
+  const a=cenas[i-1], b=cenas[i];
+  return !a||!b||a.type!==b.type||a.secao!==b.secao;
+}
+/* a CAM digitada na PRIMEIRA cena do grupo manda no grupo inteiro: refaz todas as
+   linhas seguintes do mesmo tipo, mesmo as que ja tinham sido escritas a mao.
+   Digitar no meio do grupo continua mexendo so naquela linha.            */
+function espalharCam(indice){
+  const cenas=(STATE.flux||[]);
+  const base=cenas[indice];
+  if(!base)return;
+  const valor=FLUXO.cenas[chaveCena(base,indice)].cam;
+  for(let j=indice+1;j<cenas.length;j++){
+    const sc=cenas[j];
+    if(sc.type!==base.type || sc.secao!==base.secao)break;   /* so o resto do mesmo grupo */
+    const k=chaveCena(sc,j);
+    if(!FLUXO.cenas[k])FLUXO.cenas[k]={cam:'',takes:'',obs:'',diaria:1};
+    FLUXO.cenas[k].cam=valor;
+    const linha=document.querySelector('#fxCenas tr[data-indice="'+j+'"]');
+    if(linha)linha.querySelector('input.fx-cam').value=valor;
+  }
+}
+/* mesma regra da CAM, para a data de gravacao da cena (so no fluxo de varias diarias) */
+function espalharDataCena(indice){
+  const cenas=(STATE.flux||[]);
+  const base=cenas[indice];
+  if(!base)return;
+  const valor=FLUXO.cenas[chaveCena(base,indice)].dataGrav;
+  for(let j=indice+1;j<cenas.length;j++){
+    const sc=cenas[j];
+    if(sc.type!==base.type || sc.secao!==base.secao)break;   /* so o resto do mesmo grupo */
+    const k=chaveCena(sc,j);
+    if(!FLUXO.cenas[k])FLUXO.cenas[k]={cam:'',takes:'',obs:'',dataGrav:'',diaria:1};
+    FLUXO.cenas[k].dataGrav=valor;
+    const linha=document.querySelector('#fxCenas tr[data-indice="'+j+'"]');
+    if(linha)linha.querySelector('input.fx-datacena').value=valor;
+  }
+}
+function renderArquivos(){
+  const tb=document.getElementById('fxArquivos');
+  if(!tb)return;
+  const tipos=[];
+  (STATE.flux||[]).forEach(function(sc){ if(tipos.indexOf(sc.type)<0)tipos.push(sc.type); });
+  const linhas=ORDEM.filter(function(t){ return tipos.indexOf(t)>=0; });
+  tb.innerHTML='';
+  if(!linhas.length){
+    tb.innerHTML='<tr><td colspan="4" style="padding:10px;color:var(--muted);font-size:0.85rem">Suba o roteiro na aba TP que os tipos de cena aparecem aqui.</td></tr>';
+    return;
+  }
+  linhas.forEach(function(t){
+    if(!FLUXO.arquivos[t])FLUXO.arquivos[t]=['','',''];
+    const tr=document.createElement('tr');
+    tr.innerHTML='<td class="cena">'+escapeHtml(t)+'</td>'
+      +[0,1,2].map(function(j){return '<td><input type="text" value="'+escapeHtml(FLUXO.arquivos[t][j]||'')+'"></td>';}).join('');
+    const ins=tr.querySelectorAll('input');
+    [0,1,2].forEach(function(j){
+      ins[j].addEventListener('input',function(){ FLUXO.arquivos[t][j]=ins[j].value; salvarFluxoLocal(); });
+    });
+    tb.appendChild(tr);
+  });
+}
+/* preenche o que der a partir do roteiro */
+function preencherFluxoDoRoteiro(){
+  sincronizarChaveFluxo();
+  const nome=document.getElementById('nomeAula').value.trim();
+  if(nome && !FLUXO.titulo){ FLUXO.titulo=nome; document.getElementById('fxTitulo').value=nome; }
+  const bpm=bpmDoRoteiro();
+  if(bpm.ensina && !FLUXO.bpmEnsina){ FLUXO.bpmEnsina=bpm.ensina; document.getElementById('fxBpmEnsina').value=bpm.ensina; }
+  if(bpm.toca && !FLUXO.bpmToca){ FLUXO.bpmToca=bpm.toca; document.getElementById('fxBpmToca').value=bpm.toca; }
+  salvarFluxoLocal();
+}
+let bpmDoPdf={ensina:'',toca:''};   /* lidos do PDF antes de o cabecalho ser descartado */
+/* BPM: "BPM: 50" perto das cenas de ensina; "Bpm da musica: 79" no cabecalho = toca */
+function bpmDoRoteiro(){
+  if(bpmDoPdf.ensina||bpmDoPdf.toca)return bpmDoPdf;
+  return lerBpm(ta.value);
+}
+function lerBpm(txt){
+  const mToca=txt.match(/Bpm\s+da\s+m[uú]sica\s*:\s*(\d+)/i);
+  const mEns=txt.match(/\bBPM\s*:\s*(\d+)/i);
+  return {ensina:mEns?mEns[1]:'', toca:mToca?mToca[1]:''};
+}
+function atualizarFluxo(){
+  renderFluxoCenas();
+  renderArquivos();
+  if(FLUXO.modelo==='diarias')renderDias();
+  preencherFluxoDoRoteiro();
+}
+function montarAbaFluxo(){
+  carregarFluxoLocal();
+  opcoes(document.getElementById('fxInstrutor'),INSTRUTORES,FLUXO.instrutor);
+  opcoes(document.getElementById('fxTipo'),TIPOS,FLUXO.tipo);
+  opcoes(document.getElementById('fxInstrumento'),INSTRUMENTOS,FLUXO.instrumento);
+  opcoes(document.getElementById('fxEstudio'),ESTUDIOS,FLUXO.estudio);
+  document.getElementById('fxTitulo').value=FLUXO.titulo||'';
+  document.getElementById('fxBpmEnsina').value=FLUXO.bpmEnsina||'';
+  document.getElementById('fxBpmToca').value=FLUXO.bpmToca||'';
+  document.getElementById('fxViolaoLivre').value=FLUXO.violaoLivre||'';
+  document.getElementById('fxGuitarraLivre').value=FLUXO.guitarraLivre||'';
+  document.getElementById('fxObs').value=FLUXO.obs||'';
+  ligarCampo('fxTitulo','titulo'); ligarCampo('fxInstrutor','instrutor');
+  document.getElementById('fxInstrutor').addEventListener('change',function(){ aplicarInstrumentoPadrao(); });
+  ligarCampo('fxTipo','tipo'); ligarCampo('fxInstrumento','instrumento');
+  ligarCampo('fxEstudio','estudio'); ligarCampo('fxBpmEnsina','bpmEnsina');
+  ligarCampo('fxBpmToca','bpmToca'); ligarCampo('fxViolaoLivre','violaoLivre');
+  ligarCampo('fxGuitarraLivre','guitarraLivre'); ligarCampo('fxObs','obs');
+  montarChips('fxViolaoAco',VIOLAO_ACO,'violao');
+  montarChips('fxViolaoNylon',VIOLAO_NYLON,'violao');
+  montarChips('fxGuitarraPhx',GUITARRA_PHX,'guitarra');
+  renderDiarias();
+  const qtd=document.getElementById('fxQtdDiarias');
+  if(qtd){
+    qtd.value=FLUXO.qtdDiarias||10;
+    /* da pra digitar o numero direto; so arredonda pro limite quando sai do campo */
+    qtd.addEventListener('input',function(){
+      const so=qtd.value.replace(/\D/g,'');
+      if(so!==qtd.value)qtd.value=so;
+      if(so==='')return;                       /* deixa apagar pra escrever outro */
+      DIGITANDO_QTD=true;
+      FLUXO.qtdDiarias=so; renderDias(); salvarFluxoLocal();
+      DIGITANDO_QTD=false;
+    });
+    qtd.addEventListener('blur',function(){
+      qtd.value=normalizarDias(); renderDias(); salvarFluxoLocal();
+    });
+    qtd.addEventListener('keydown',function(e){ if(e.key==='Enter')qtd.blur(); });
+  }
+  aplicarModelo();
+  atualizarFluxo();
+}
+/* Vini e Tarsius tocam guitarra; Fofao e Vaz, violao */
+function aplicarInstrumentoPadrao(){
+  const padrao=INSTRUMENTO_PADRAO[FLUXO.instrutor];
+  if(!padrao)return;
+  FLUXO.instrumento=padrao;
+  const sel=document.getElementById('fxInstrumento');
+  if(sel)sel.value=padrao;
+  salvarFluxoLocal();
+}
+async function salvarFluxoNaPasta(){
+  if(!TEM_FS){ alert('Este recurso precisa do Chrome ou Edge, com a página aberta pelo link do site.'); return; }
+  try{
+    if(!pastaFluxo || !(await temPermissao(pastaFluxo,true))){
+      pastaFluxo=await window.showDirectoryPicker({mode:'readwrite',id:'pastaFluxo'});
+      await guardar('pastaFluxo',pastaFluxo);
+      const el=document.getElementById('fxPastaNome');
+      el.textContent=pastaFluxo.name; el.classList.add('ativa');
+    }
+    const nome=document.getElementById('nomeAula').value.trim();
+    const arq=(nome?slugifyAula(nome):'fluxo')+'_fluxo.json';
+    await gravar(pastaFluxo,arq,new Blob([JSON.stringify(FLUXO,null,2)],{type:'application/json'}));
+    flash('fxSalvoOk');
+  }catch(e){ if(e.name!=='AbortError')alert('Não consegui salvar: '+e.message); }
+}
+
+/* ================= tipos de fluxo ================= */
+const MODELOS=['padrao','diarias','micro'];
+function trocarModelo(m){
+  if(MODELOS.indexOf(m)<0)return;
+  FLUXO.modelo=m;
+  aplicarModelo();
+  salvarFluxoLocal();
+}
+function aplicarModelo(){
+  const aba=document.getElementById('main-fluxo');
+  if(!aba)return;
+  const m=FLUXO.modelo||'padrao';
+  aba.classList.remove('fx-modo-padrao','fx-modo-diarias','fx-modo-micro');
+  aba.classList.add('fx-modo-'+m);
+  document.querySelectorAll('.fx-modelo').forEach(function(b){
+    b.classList.toggle('on',b.dataset.modelo===m);
+  });
+  if(m==='diarias')renderDias();
+  renderFluxoCenas();
+}
+/* ---- varias diarias: ate 30 dias, cada um com data, produtora e arquivos ---- */
+let DIGITANDO_QTD=false;   /* enquanto digita, renderDias nao mexe no campo */
+function normalizarDias(){
+  const n=Math.max(1,Math.min(30,parseInt(FLUXO.qtdDiarias,10)||10));
+  FLUXO.qtdDiarias=n;
+  if(!FLUXO.arqOrigens||typeof FLUXO.arqOrigens!=='object')FLUXO.arqOrigens={};
+  if(!Array.isArray(FLUXO.dias))FLUXO.dias=[];
+  while(FLUXO.dias.length<n){
+    /* diaria nova nasce com os arquivos da anterior: o numero segue ate o fim */
+    const ult=FLUXO.dias[FLUXO.dias.length-1];
+    FLUXO.dias.push({data:'',obs:'',produtora:[],arquivos:Object.assign({},(ult&&ult.arquivos)||{})});
+  }
+  FLUXO.dias.forEach(function(d){
+    if(!Array.isArray(d.produtora))d.produtora = d.produtora ? [d.produtora] : [];
+    if(typeof d.data!=='string')d.data='';
+    if(typeof d.obs!=='string')d.obs='';
+    if(!d.arquivos||typeof d.arquivos!=='object')d.arquivos={};
+  });
+  return n;
+}
+/* Mesma logica das diarias coloridas, aplicada ao numero do arquivo:
+   1o lugar onde o numero e escrito: vale da i ate a ultima diaria.
+   2o lugar: renomeia dali em diante.
+   3o lugar em diante: so aquela diaria.
+   Voltar a mexer num lugar ja usado mantem o alcance que ele tinha.     */
+function ordemOrigemArq(indice,tipo){
+  if(!FLUXO.arqOrigens||typeof FLUXO.arqOrigens!=='object')FLUXO.arqOrigens={};
+  const lista=FLUXO.arqOrigens[tipo]||(FLUXO.arqOrigens[tipo]=[]);
+  const k=lista.indexOf(indice);
+  if(k>=0)return k+1;
+  lista.push(indice);
+  return lista.length;
+}
+function espalharArquivoDia(indice,tipo){
+  normalizarDias();
+  if(ordemOrigemArq(indice,tipo)>=3)return;       /* da terceira em diante, so esta */
+  const valor=FLUXO.dias[indice].arquivos[tipo]||'';
+  /* vai ate o fim da lista guardada, nao so ate as diarias visiveis:
+     aumentando a quantidade depois, as que aparecem ja vem com o numero certo */
+  for(let j=indice+1;j<FLUXO.dias.length;j++){
+    FLUXO.dias[j].arquivos[tipo]=valor;
+    const campo=document.querySelector('#fxDiasLista .fx-dia[data-dia="'+j+'"] .fx-arq[data-tipo="'+tipo+'"]');
+    if(campo)campo.value=valor;
+  }
+}
+function tiposDoRoteiro(){
+  const t=[];
+  (STATE.flux||[]).forEach(function(sc){ if(t.indexOf(sc.type)<0)t.push(sc.type); });
+  return ORDEM.filter(function(x){ return t.indexOf(x)>=0; });
+}
+function renderDias(){
+  const cx=document.getElementById('fxDiasLista');
+  if(!cx)return;
+  const n=normalizarDias();
+  const tipos=tiposDoRoteiro();
+  const campoQtd=document.getElementById('fxQtdDiarias');
+  if(campoQtd && !DIGITANDO_QTD && String(campoQtd.value)!==String(n))campoQtd.value=n;
+  cx.innerHTML='';
+  for(let i=0;i<n;i++){
+    const d=FLUXO.dias[i];
+    const cartao=document.createElement('div');
+    cartao.className='fx-dia';
+    cartao.dataset.dia=String(i);
+    cartao.innerHTML='<div class="num">'+(i+1)+'ª diária</div>'
+      +'<div class="rot">Data de gravação</div>'
+      +'<input type="text" class="fx-data" placeholder="__/__/____" value="'+escapeHtml(d.data||'')+'">'
+      +'<div class="rot">Produtora</div>'
+      +'<div class="fx-chips fx-prod"></div>'
+      +'<div class="rot" style="margin-top:7px">Cena e arquivo</div>'
+      +tipos.map(function(t){
+          return '<div class="fx-linha"><span class="cena">'+escapeHtml(t)+'</span>'
+            +'<input type="text" class="fx-arq" data-tipo="'+escapeHtml(t)+'" placeholder="arquivo" value="'+escapeHtml(d.arquivos[t]||'')+'"></div>';
+        }).join('');
+    const data=cartao.querySelector('.fx-data');
+    data.addEventListener('input',function(){ d.data=data.value; salvarFluxoLocal(); });
+    data.addEventListener('blur',function(){
+      const f=formatarData(data.value);
+      if(f!==data.value){ data.value=f; d.data=f; salvarFluxoLocal(); }
+    });
+    data.addEventListener('keydown',function(e){ if(e.key==='Enter')data.blur(); });
+    const caixa=cartao.querySelector('.fx-prod');
+    PRODUTORAS.forEach(function(nome){
+      const b=document.createElement('button');
+      b.className='fx-chip'+(d.produtora.indexOf(nome)>=0?' on':'');
+      b.textContent=nome;
+      b.onclick=function(){
+        const k=d.produtora.indexOf(nome);
+        if(k>=0)d.produtora.splice(k,1); else d.produtora.push(nome);
+        b.classList.toggle('on',d.produtora.indexOf(nome)>=0);
+        salvarFluxoLocal();
+      };
+      caixa.appendChild(b);
+    });
+    cartao.querySelectorAll('.fx-arq').forEach(function(inp){
+      inp.addEventListener('input',function(){
+        d.arquivos[inp.dataset.tipo]=inp.value;
+        espalharArquivoDia(i,inp.dataset.tipo);   /* renomeia desta diaria em diante */
+        salvarFluxoLocal();
+      });
+    });
+    cx.appendChild(cartao);
+  }
+}
+
+montarAbaFluxo();   /* por ultimo: depende das constantes definidas acima */
+</script>
+</body>
+</html>
