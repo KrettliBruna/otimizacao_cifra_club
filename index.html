@@ -126,6 +126,8 @@
   .fx-cab label{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.09em;color:var(--muted);font-weight:700;display:block;margin-bottom:5px;}
   .fx-cab select,.fx-cab input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:0.88rem;background:var(--panel);color:var(--ink);}
   .fx-titulo{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:1.05rem;font-weight:700;text-align:center;font-family:'Courier New',monospace;}
+  /* o que identifica a gravacao sai em laranja, como os chips escolhidos */
+  #fxTitulo,#fxInstrutor,#fxEstudio,.fx-data,.fx-datacena{color:var(--amber);font-weight:700;}
   table.fx{width:100%;border-collapse:collapse;margin-top:6px;}
   table.fx th{background:var(--panel);border:1px solid var(--line);padding:7px 8px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);}
   table.fx td{border:1px solid var(--line);padding:0;background:var(--panel);}
@@ -190,6 +192,9 @@
   body{background:#fff;color:#000;} .wrap{padding:0;max-width:100%;}
   /* o que foi digitado ou escolhido sai em preto, nao no cinza da tela */
   input,select,textarea{color:#000!important;background:#fff!important;}
+  /* nome do video, instrutor, estudio e data de gravacao em laranja,
+     do mesmo jeito que o instrumento e a produtora escolhidos */
+  #fxTitulo,#fxInstrutor,#fxEstudio,.fx-data,.fx-datacena{color:#c8621f!important;font-weight:700;}
   /* dentro da tabela o campo fica transparente: fundo branco por cima
      comia as linhas que dividem as colunas */
   table.fx td input{background:transparent!important;}
@@ -316,7 +321,7 @@
       <button class="btn ghost" onclick="salvarTpNaPasta()">Salvar na pasta…</button>
       <span class="copied" id="tpPastaOk" style="display:none">✓ salvo</span>
       <button class="mini" onclick="salvarTpNaPasta(true)">Trocar pasta</button>
-      <span class="folder-name" id="pastaTPNome">vai perguntar onde salvar</span>
+      <span class="folder-name" id="pastaTPNome"></span>
     </div>
   </div>
 
@@ -334,7 +339,9 @@
     <button class="fx-modelo" data-modelo="micro" onclick="trocarModelo('micro')">Microaula</button>
   </div>
 
-  <input type="text" class="fx-titulo" id="fxTitulo" placeholder="Nome do vídeo">
+  <!-- o campo vai dentro de uma caixa: o gerador de PDF nao sabe desenhar
+       um <input> solto como bloco, porque ele e trocado por texto fixo -->
+  <div id="fxBlocoTitulo"><input type="text" class="fx-titulo" id="fxTitulo" placeholder="Nome do vídeo"></div>
 
   <div class="fx-cab">
     <div><label>Instrutor</label><select id="fxInstrutor"></select></div>
@@ -407,7 +414,7 @@
     <button class="btn ghost" id="btnAbrirFluxo" onclick="document.getElementById('fxArquivoFluxo').click()">Abrir fluxo…</button>
     <input type="file" id="fxArquivoFluxo" accept=".fluxo,.json,application/json" style="display:none">
     <button class="mini" id="btnTrocarPasta" onclick="salvarTudo(true)">Trocar pasta</button>
-    <span class="folder-name" id="fxPastaNome">vai perguntar onde salvar</span>
+    <span class="folder-name" id="fxPastaNome"></span>
     <span class="copied" id="fxSalvoOk" style="display:none">✓ salvo</span>
   </div>
   <div class="hint" id="fxSalvarAviso" style="display:none"></div>
@@ -422,12 +429,10 @@
       <button class="mini" onclick="fecharPassagem()">Fechar</button>
     </div>
   </div>
-  <div class="hint">O preenchimento fica guardado no navegador por aula — fechou e abriu, continua de onde parou.</div>
 
   <div class="controls" style="margin-top:22px">
     <button class="btn ghost" id="btnLimparFluxo" onclick="limparFluxo()">Limpar esta aba</button>
     <span class="copied" id="fxLimpoOk" style="display:none">✓ limpo</span>
-    <span class="hint" style="margin:0">Apaga só o fluxo preenchido desta aula. As cenas voltam do roteiro.</span>
   </div>
 </div>
 
@@ -1326,7 +1331,7 @@ function marcarPastaTP(){
   const el=document.getElementById('pastaTPNome');
   if(!el)return;
   if(pastaTP){ el.textContent=pastaTP.name; el.classList.add('ativa'); }
-  else { el.textContent='vai perguntar onde salvar'; el.classList.remove('ativa'); }
+  else { el.textContent=''; el.classList.remove('ativa'); }
 }
 async function esquecerPastaTP(){
   pastaTP=null;
@@ -1468,6 +1473,7 @@ function congelarCampos(raiz,originais){
     if(txt==='—')txt='';
     const d=raiz.ownerDocument.createElement('div');
     d.className='pdf-campo'+(c.className?' '+c.className:'');
+    if(c.id)d.id=c.id;                       /* mantem o que e identificado por id */
     d.textContent=txt;
     c.parentNode.replaceChild(d,c);
   });
@@ -1496,7 +1502,12 @@ async function montarPdfFluxo(diz){
   const pintados=[];
   for(let i=0;i<blocos.length;i++){
     diz('Montando o PDF… '+(i+1)+'/'+blocos.length);
-    pintados.push(await pintarBloco(blocos[i]));
+    try{
+      pintados.push(await pintarBloco(blocos[i]));
+    }catch(e){
+      const quem=blocos[i].id||blocos[i].className||blocos[i].tagName;
+      throw new Error('falhou no bloco "'+quem+'" ('+(e&&e.message?e.message:e)+')');
+    }
   }
   const medidos=pintados.map(function(p){
     return {altura:PDF_UTIL_X*p.canvas.height/p.canvas.width, cortes:p.cortes};
