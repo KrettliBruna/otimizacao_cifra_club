@@ -165,7 +165,9 @@
   table.fx th:last-child,table.fx td:last-child{border-right:none;}
   table.fx tr:last-child td{border-bottom:none;}
   /* cada linha com altura de duas linhas de texto: sobra espaco pra escrever a mao */
-  table.fx td input{width:100%;border:none;background:transparent;color:var(--ink);padding:16px 8px;font-size:0.86rem;font-family:inherit;}
+  /* -webkit-touch-callout: tira o menu de copiar/colar que o iPhone abre ao
+     segurar o dedo, e que atrapalhava marcar varios campos */
+  table.fx td input{width:100%;border:none;background:transparent;color:var(--ink);padding:16px 8px;font-size:0.86rem;font-family:inherit;-webkit-touch-callout:none;}
   table.fx td input:focus{outline:2px solid var(--amber);outline-offset:-2px;}
   /* campos cobertos pelo arrasto, prontos para o Delete */
   table.fx td input.marcado{background:var(--amber-soft)!important;}
@@ -5582,14 +5584,18 @@ function pintarCampos(){
   });
 }
 function limparMarcacao(){ selCampos={de:null,ate:null,arrastando:false,pendente:null}; pintarCampos(); }
+let apagandoFaixa=false;   /* avisa o resto que este 'input' veio da limpeza */
 function apagarCamposMarcados(){
   const f=faixaDeCampos();
   if(!f || f[0]===f[1])return false;
-  camposDaTabela().forEach(function(c,i){
-    if(i<f[0] || i>f[1])return;
-    c.value='';
-    c.dispatchEvent(new Event('input',{bubbles:true}));
-  });
+  apagandoFaixa=true;
+  try{
+    camposDaTabela().forEach(function(c,i){
+      if(i<f[0] || i>f[1])return;
+      c.value='';
+      c.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+  }finally{ apagandoFaixa=false; }
   limparMarcacao();
   return true;
 }
@@ -5601,6 +5607,7 @@ function apagarCamposMarcados(){
   };
   tabela.addEventListener('mousedown',function(e){
     if(e.button!==0)return;
+    if(Date.now()-tocouAgora<700)return;   /* mouse falso, nascido de um toque */
     limparMarcacao();
     const i=indiceCampo(e.target);
     if(i>=0)selCampos.pendente=i;
@@ -5633,17 +5640,22 @@ function apagarCamposMarcados(){
   });
   document.addEventListener('mousedown',function(e){
     if(!faixaDeCampos())return;
+    if(Date.now()-tocouAgora<700)return;   /* mouse falso, nascido de um toque */
     if(!(e.target.closest && e.target.closest('#fxCenas')))limparMarcacao();
   });
 
   /* ----- o mesmo arrasto, com o dedo, no iPhone e no iPad -----
      Um deslize comum continua rolando a pagina. Segurar o dedo parado em
-     cima de um campo por um instante entra no modo de marcar: dali em
-     diante o dedo risca os campos e a pagina nao rola. Ao soltar, o campo
-     fica em foco com o teclado aberto, e o apagar do teclado limpa a faixa
-     inteira de uma vez.                                                   */
+     cima de um campo por um instante entra no modo de marcar: o campo acende.
+     Dali em diante, duas formas de dizer ate onde vai a faixa:
+       - arrastar o dedo, e
+       - tocar no ultimo campo (serve pra faixa longa, com rolagem no meio).
+     O Safari as vezes toma o arrasto pra ele (lupa de selecao de texto), e
+     ai o arrasto morre; por isso existe tambem o toque, que nunca falha.
+     Com a faixa marcada, o apagar do teclado da tela limpa tudo de uma vez. */
   const ESPERA_DEDO=350, FOLGA_DEDO=12;
   let dedo={relogio:null,x:0,y:0,armado:false};
+  let tocouAgora=0;        /* depois do toque o navegador dispara mouse falso */
   const campoNoPonto=function(x,y){
     const el=document.elementFromPoint(x,y);
     if(!el || el.tagName!=='INPUT')return null;
@@ -5653,13 +5665,24 @@ function apagarCamposMarcados(){
     if(dedo.relogio)clearTimeout(dedo.relogio);
     dedo={relogio:null,x:0,y:0,armado:false};
   };
+  const abrirTeclado=function(i){
+    const alvo=camposDaTabela()[i];
+    if(!alvo || !alvo.focus)return;
+    alvo.focus();
+    if(alvo.setSelectionRange)try{alvo.setSelectionRange(alvo.value.length,alvo.value.length)}catch(x){}
+  };
   tabela.addEventListener('touchstart',function(e){
-    soltarDedo();
+    soltarDedo(); tocouAgora=Date.now();
     if(e.touches.length!==1)return;
+    const t=e.touches[0], i=indiceCampo(campoNoPonto(t.clientX,t.clientY));
+    if(i<0){ limparMarcacao(); return; }
+    if(selCampos.de!==null){
+      /* ja esta marcando: este toque estica a faixa ate aqui */
+      selCampos.ate=i; selCampos.arrastando=false;
+      pintarCampos();
+      return;
+    }
     limparMarcacao();
-    const t=e.touches[0], campo=campoNoPonto(t.clientX,t.clientY);
-    const i=indiceCampo(campo);
-    if(i<0)return;
     dedo.x=t.clientX; dedo.y=t.clientY;
     dedo.relogio=setTimeout(function(){
       dedo.armado=true;
@@ -5676,7 +5699,7 @@ function apagarCamposMarcados(){
       if(Math.abs(t.clientX-dedo.x)>FOLGA_DEDO || Math.abs(t.clientY-dedo.y)>FOLGA_DEDO)soltarDedo();
       return;
     }
-    e.preventDefault();          /* segura a rolagem enquanto marca */
+    if(e.cancelable)e.preventDefault();   /* segura a rolagem enquanto marca */
     const i=indiceCampo(campoNoPonto(t.clientX,t.clientY));
     if(i<0 || i===selCampos.ate)return;
     selCampos.ate=i;
@@ -5684,25 +5707,35 @@ function apagarCamposMarcados(){
   },{passive:false});
   const fimDoDedo=function(e){
     const marcou=dedo.armado;
-    soltarDedo();
+    soltarDedo(); tocouAgora=Date.now();
     if(!marcou)return;
     selCampos.arrastando=false;
     const f=faixaDeCampos();
     if(!f)return;
     if(e.cancelable)e.preventDefault();
-    /* deixa o teclado da tela aberto: o apagar dele limpa a faixa toda */
-    const alvo=camposDaTabela()[f[0]];
-    if(alvo && alvo.focus){
-      alvo.focus();
-      if(alvo.setSelectionRange)try{alvo.setSelectionRange(alvo.value.length,alvo.value.length)}catch(x){}
-    }
+    abrirTeclado(f[0]);          /* teclado aberto: o apagar dele limpa a faixa */
   };
   tabela.addEventListener('touchend',fimDoDedo,{passive:false});
-  tabela.addEventListener('touchcancel',function(){ soltarDedo(); },{passive:true});
+  /* se o Safari tomar o gesto pra ele, a marcacao continua de pe:
+     da pra terminar a faixa tocando no ultimo campo */
+  tabela.addEventListener('touchcancel',function(){
+    const marcou=dedo.armado;
+    soltarDedo(); tocouAgora=Date.now();
+    if(marcou && faixaDeCampos())selCampos.arrastando=false;
+  },{passive:true});
+  /* sem a lupa e o menu de copiar, que atrapalham o segurar o dedo */
+  tabela.addEventListener('contextmenu',function(e){
+    if(dedo.armado || selCampos.de!==null)e.preventDefault();
+  });
   document.addEventListener('touchstart',function(e){
     if(!faixaDeCampos())return;
     if(!(e.target.closest && e.target.closest('#fxCenas')))limparMarcacao();
   },{passive:true});
+  /* digitar quer dizer que nao era pra apagar: desfaz a marcacao */
+  tabela.addEventListener('input',function(e){
+    if(apagandoFaixa || e.target.tagName!=='INPUT')return;
+    if(selCampos.de!==null)limparMarcacao();
+  });
   /* o apagar do teclado da tela nao chega como Delete em todo aparelho:
      o beforeinput chega sempre */
   tabela.addEventListener('beforeinput',function(e){
