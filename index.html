@@ -133,13 +133,20 @@
   #fxTitulo,#fxInstrutor,#fxEstudio,
   .fx-cab input.fx-data,.fx-dia input.fx-data,
   table.fx td input.fx-datacena{color:var(--amber);font-weight:700;}
-  table.fx{width:100%;border-collapse:collapse;margin-top:6px;}
+  /* nome da aula e data de gravacao maiores, para ler de longe no estudio */
+  #fxTitulo{font-size:1.4rem;padding:14px;}
+  .fx-cab input.fx-data,.fx-dia input.fx-data,
+  table.fx td input.fx-datacena{font-size:1.02rem;}
+  table.fx{width:100%;border-collapse:collapse;margin-top:6px;table-layout:fixed;}
   table.fx th{background:var(--panel);border:1px solid var(--line);padding:7px 8px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);}
   table.fx td{border:1px solid var(--line);padding:0;background:var(--panel);}
   /* cada linha com altura de duas linhas de texto: sobra espaco pra escrever a mao */
   table.fx td input{width:100%;border:none;background:transparent;color:var(--ink);padding:16px 8px;font-size:0.86rem;font-family:inherit;}
   table.fx td input:focus{outline:2px solid var(--amber);outline-offset:-2px;}
-  table.fx td.cena{font-family:'Courier New',monospace;font-weight:700;text-align:center;padding:16px 10px;white-space:nowrap;}
+  table.fx td.cena{font-family:'Courier New',monospace;font-weight:700;text-align:center;padding:16px 10px;white-space:nowrap;
+    cursor:default;user-select:none;-webkit-user-select:none;}
+  /* linhas marcadas com o mouse, para apagar de uma vez */
+  table.fx tr.sel td:not(.diaria){background:var(--amber-soft);}
   table.fx tr.divisor td{background:transparent;border:none;border-top:1px solid var(--muted);padding:14px 2px 6px;
     font-size:0.68rem;letter-spacing:0.18em;color:var(--muted);font-weight:700;}
   table.fx tr.espaco td{height:14px;background:transparent;border-left:none;border-right:none;}
@@ -202,6 +209,8 @@
      do mesmo jeito que o instrumento e a produtora escolhidos */
   #fxTitulo,#fxInstrutor,#fxEstudio,.fx-data,.fx-datacena,
   .pdf-campo.fx-data,.pdf-campo.fx-datacena{color:#c8621f!important;font-weight:700;}
+  #fxTitulo,.pdf-campo.fx-titulo{font-size:1.4rem!important;}
+  .fx-data,.fx-datacena,.pdf-campo.fx-data,.pdf-campo.fx-datacena{font-size:1.02rem!important;}
   /* dentro da tabela o campo fica transparente: fundo branco por cima
      comia as linhas que dividem as colunas */
   table.fx td input{background:transparent!important;}
@@ -213,6 +222,7 @@
   table.fx tr.d2 td.diaria{background:#2f6fd0!important;color:#fff!important;}
   table.fx tr.d3 td.diaria{background:#cc2b2b!important;color:#fff!important;}
   table.fx tr.faixa td{background:#efefef;color:#000;}
+  table.fx tr.sel td:not(.diaria){background:#fff!important;}   /* marcacao nao vai pro PDF */
   /* produtora, violao, guitarra e os rotulos saiam em preto, nao no cinza da tela */
   .fx-chip,.fx-grupo,.fx-cab label,.fx-dia .num,.fx-dia .rot{color:#000!important;}
   .fx-chip{background:#fff!important;border:1px solid #000!important;}
@@ -233,7 +243,7 @@
   .fx-cab .pdf-campo{width:100%;padding:8px 10px;font-size:0.88rem;border:1px solid #000;border-radius:7px;min-height:35px;}
   .fx-dia .pdf-campo{width:100%;padding:6px 8px;font-size:0.82rem;border:1px solid #000;border-radius:6px;margin-bottom:5px;min-height:28px;}
   .fx-dia .fx-linha .pdf-campo{flex:1 1 auto;min-width:0;margin-bottom:0;}
-  .fx-titulo.pdf-campo{min-height:48px;}
+  .fx-titulo.pdf-campo{min-height:58px;}
   .fx-obs.pdf-campo{min-height:230px;}
   .fx-livre.pdf-campo{min-height:62px;}
 </style>
@@ -361,7 +371,10 @@
     <table class="fx"><thead><tr>
       <th style="width:34px" title="Clique para trocar a diária">D</th>
       <th style="width:120px">Cena</th><th style="width:70px">Cam</th>
-      <th style="width:170px">Take(s)</th>
+      <!-- Take(s) termina rente ao fim do campo "Tipo" do cabecalho, que
+           acaba em 50% da largura. O Chrome ignora calc() em largura de
+           coluna, entao vai em porcentagem.                              -->
+      <th style="width:27.4%">Take(s)</th>
       <th class="fx-so-diarias" style="width:118px">Data de gravação</th>
       <th id="fxColObs">Observações</th>
     </tr></thead><tbody id="fxCenas"></tbody></table>
@@ -1482,46 +1495,59 @@ function congelarCampos(raiz,originais){
   });
 }
 
-let cortesDoBloco=null;
-async function pintarBloco(el){
-  cortesDoBloco=null;
-  const canvas=await window.html2canvas(el,{
-    scale:2, backgroundColor:'#ffffff', logging:false, useCORS:true,
+/* Mede, dentro da copia ja com o visual de impressao, onde cada bloco comeca e
+   termina — em fracao da altura total — e onde ele pode ser cortado.        */
+function medirBlocos(aba){
+  const vista=aba.ownerDocument.defaultView;
+  const total=aba.getBoundingClientRect();
+  const H=total.height||1;
+  const saida=[];
+  Array.prototype.forEach.call(aba.children,function(el){
+    if(vista.getComputedStyle(el).display==='none')return;
+    const r=el.getBoundingClientRect();
+    if(r.height<1)return;
+    saida.push({topo:(r.top-total.top)/H, base:(r.bottom-total.top)/H, cortes:pontosDeCorte(el)});
+  });
+  return saida;
+}
+/* Uma unica passada de desenho: cada chamada do html2canvas copia o documento
+   inteiro, entao sete chamadas custavam sete copias. Agora e uma so, e os
+   blocos saem recortados dela.                                             */
+let medidasDaCopia=null;
+async function pintarAba(){
+  medidasDaCopia=null;
+  const aba=document.getElementById('main-fluxo');
+  const canvas=await window.html2canvas(aba,{
+    scale:1.5, backgroundColor:'#ffffff', logging:false, useCORS:true,
     windowWidth:1080,
     onclone:function(doc,clonado){
       const est=doc.getElementById('estiloPdf');
       if(est)est.media='all';                 /* mesma aparencia da impressao */
       congelarCampos(doc.body,Array.from(document.querySelectorAll('input,select,textarea')));
-      cortesDoBloco=pontosDeCorte(clonado);
+      medidasDaCopia=medirBlocos(clonado);
     }
   });
-  return {canvas:canvas,cortes:cortesDoBloco};
+  return {canvas:canvas,medidas:medidasDaCopia||[]};
 }
 
 async function montarPdfFluxo(diz){
-  const blocos=blocosDoFluxo();
-  if(!blocos.length)throw new Error('não há nada no fluxo ainda');
+  if(!blocosDoFluxo().length)throw new Error('n\u00e3o h\u00e1 nada no fluxo ainda');
   await carregarLibsPdf();
-  const pintados=[];
-  for(let i=0;i<blocos.length;i++){
-    diz('Montando o PDF… '+(i+1)+'/'+blocos.length);
-    try{
-      pintados.push(await pintarBloco(blocos[i]));
-    }catch(e){
-      const quem=blocos[i].id||blocos[i].className||blocos[i].tagName;
-      throw new Error('falhou no bloco "'+quem+'" ('+(e&&e.message?e.message:e)+')');
-    }
-  }
-  const medidos=pintados.map(function(p){
-    return {altura:PDF_UTIL_X*p.canvas.height/p.canvas.width, cortes:p.cortes};
-  });
-  const plano=distribuirBlocos(medidos,PDF_UTIL_Y,PDF_ESPACO);
+  diz('Montando o PDF\u2026');
+  const desenho=await pintarAba();
+  const canvas=desenho.canvas, medidas=desenho.medidas;
+  if(!medidas.length)throw new Error('n\u00e3o consegui medir os blocos do fluxo');
+  const alturaDe=function(m){ return PDF_UTIL_X*(canvas.height*(m.base-m.topo))/canvas.width; };
+  const plano=distribuirBlocos(medidas.map(function(m){
+    return {altura:alturaDe(m), cortes:m.cortes};
+  }),PDF_UTIL_Y,PDF_ESPACO);
   const pdf=new window.jspdf.jsPDF({orientation:'p',unit:'mm',format:'a4'});
   let paginaAtual=0;
   plano.forEach(function(pe){
     while(paginaAtual<pe.pagina){ pdf.addPage(); paginaAtual++; }
-    const c=fatiarCanvas(pintados[pe.bloco].canvas,pe.de,pe.ate);
-    pdf.addImage(c.toDataURL('image/png'),'PNG',
+    const m=medidas[pe.bloco], faixa=m.base-m.topo;
+    const c=fatiarCanvas(canvas,m.topo+pe.de*faixa,m.topo+pe.ate*faixa);
+    pdf.addImage(c.toDataURL('image/jpeg',0.92),'JPEG',
       PDF_MARGEM,PDF_MARGEM+pe.y,PDF_UTIL_X,pe.altura,undefined,'FAST');
   });
   return pdf.output('blob');
@@ -2617,6 +2643,98 @@ function renderDias(){
     cx.appendChild(cartao);
   }
 }
+
+/* ===== andar pelas linhas com as setas e selecionar linhas com o mouse =====
+   As setas sobem e descem pela mesma coluna. Arrastar pelo nome da cena marca
+   quantas linhas quiser; Delete limpa o que esta escrito nelas.            */
+function linhasDasCenas(){
+  return Array.from(document.querySelectorAll('#fxCenas tr[data-indice]'));
+}
+function irParaLinha(passo,campo){
+  const tr=campo.closest('tr');
+  const linhas=linhasDasCenas();
+  const i=linhas.indexOf(tr);
+  const alvo=linhas[i+passo];
+  if(i<0 || !alvo)return false;
+  const col=Array.prototype.indexOf.call(tr.querySelectorAll('input'),campo);
+  const campos=alvo.querySelectorAll('input');
+  const destino=campos[col]||campos[campos.length-1];
+  if(!destino)return false;
+  destino.focus();
+  const n=destino.value.length;
+  try{ destino.setSelectionRange(n,n); }catch(e){}
+  return true;
+}
+let selCenas={de:null,ate:null,arrastando:false};
+function faixaSelecionada(){
+  if(selCenas.de===null)return null;
+  return [Math.min(selCenas.de,selCenas.ate),Math.max(selCenas.de,selCenas.ate)];
+}
+function pintarSelecao(){
+  const f=faixaSelecionada();
+  linhasDasCenas().forEach(function(tr,i){
+    tr.classList.toggle('sel', !!f && i>=f[0] && i<=f[1]);
+  });
+}
+function limparSelecao(){ selCenas={de:null,ate:null,arrastando:false}; pintarSelecao(); }
+function apagarSelecionadas(){
+  const f=faixaSelecionada();
+  if(!f)return false;
+  const cenas=(STATE.flux||[]);
+  for(let i=f[0];i<=f[1];i++){
+    const sc=cenas[i];
+    if(!sc)continue;
+    const k=chaveCena(sc,i);
+    if(!FLUXO.cenas[k])continue;
+    ['cam','takes','obs','dataGrav'].forEach(function(campo){ FLUXO.cenas[k][campo]=''; });
+  }
+  salvarFluxoLocal();
+  renderFluxoCenas();
+  pintarSelecao();
+  return true;
+}
+(function(){
+  const tabela=document.getElementById('fxCenas');
+  if(!tabela)return;
+  tabela.addEventListener('keydown',function(e){
+    if(e.target.tagName!=='INPUT')return;
+    if(e.key!=='ArrowUp' && e.key!=='ArrowDown')return;
+    if(irParaLinha(e.key==='ArrowDown'?1:-1,e.target))e.preventDefault();
+  });
+  const indiceDe=function(alvo){
+    const tr=alvo.closest && alvo.closest('tr[data-indice]');
+    return tr?linhasDasCenas().indexOf(tr):-1;
+  };
+  tabela.addEventListener('mousedown',function(e){
+    if(e.button!==0)return;                       /* so o botao esquerdo */
+    const cel=e.target.closest && e.target.closest('td');
+    if(!cel || !cel.classList.contains('cena'))return;   /* arrasta pelo nome da cena */
+    const i=indiceDe(e.target);
+    if(i<0)return;
+    e.preventDefault();
+    selCenas={de:i,ate:i,arrastando:true};
+    pintarSelecao();
+  });
+  tabela.addEventListener('mouseover',function(e){
+    if(!selCenas.arrastando)return;
+    const i=indiceDe(e.target);
+    if(i<0 || i===selCenas.ate)return;
+    selCenas.ate=i;
+    pintarSelecao();
+  });
+  document.addEventListener('mouseup',function(){ selCenas.arrastando=false; });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){ limparSelecao(); return; }
+    if(e.key!=='Delete' && e.key!=='Backspace')return;
+    if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;   /* digitando */
+    if(apagarSelecionadas())e.preventDefault();
+  });
+  document.addEventListener('mousedown',function(e){
+    if(!faixaSelecionada())return;
+    const dentro=e.target.closest && e.target.closest('#fxCenas');
+    if(!dentro)limparSelecao();
+  });
+})();
 
 montarAbaFluxo();   /* por ultimo: depende das constantes definidas acima */
 
