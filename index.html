@@ -250,7 +250,6 @@
 
 <div class="main-tab active" id="main-tp">
 <div class="controls" style="margin:0 0 16px;justify-content:flex-end">
-  <span class="hint" style="margin:0 auto 0 0">Limpar tudo zera as três abas de uma vez.</span>
   <button class="btn ghost" id="btnLimparTudo" onclick="limparTudo()">Limpar tudo</button>
   <span class="copied" id="limpouTudoOk" style="display:none">✓ tudo limpo</span>
 </div>
@@ -301,7 +300,7 @@
         <button class="mini" onclick="renumerar()" title="Corrige a numeração de todas as cenas na ordem em que aparecem">Renumerar</button>
       </div>
       <textarea class="paste" id="input" placeholder="Cole o roteiro aqui, ou clique num botão de cena acima..."></textarea>
-      <div class="hint">O que veio do PDF aparece aqui e pode ser editado — o arquivo do TP e o fluxograma se refazem sozinhos, sem botão nenhum. Para começar do zero, use os botões de cena: o número entra sozinho. Ctrl+Z desfaz qualquer alteração, inclusive o Limpar. <span class="copied" id="avisoEdicao" style="display:none"></span></div>
+      <span class="copied" id="avisoEdicao" style="display:none"></span>
     </div>
   </div>
 
@@ -327,7 +326,6 @@
 
   <div class="controls" style="margin-top:22px">
     <button class="btn ghost" id="btnLimparTp" onclick="limpar()">Limpar esta aba</button>
-    <span class="hint" style="margin:0">Apaga só o roteiro e o arquivo do TP. Ctrl+Z desfaz.</span>
   </div>
 </div><!-- fim main-tp -->
 
@@ -381,7 +379,6 @@
     <table class="fx"><thead><tr><th style="width:120px">Cena</th>
       <th>1º dia</th><th>2º dia</th><th>3º dia</th></tr></thead>
       <tbody id="fxArquivos"></tbody></table>
-    <div class="hint">LOC é um arquivo; TAB, TOCA, RITMO e DEDIL são outro. ACORDES usa os dois números.</div>
   </div>
 
   <div class="fx-bloco fx-so-diarias">
@@ -390,7 +387,6 @@
       <div><label>Quantas diárias</label><input type="text" inputmode="numeric" maxlength="2" id="fxQtdDiarias" placeholder="10" value="10"></div>
     </div>
     <div class="fx-dias" id="fxDiasLista"></div>
-    <div class="hint" style="margin-top:12px">Cada diária tem data, quem gravou e os números dos arquivos daquele dia.</div>
   </div>
 
   <div class="fx-dupla">
@@ -417,7 +413,6 @@
     <span class="folder-name" id="fxPastaNome"></span>
     <span class="copied" id="fxSalvoOk" style="display:none">✓ salvo</span>
   </div>
-  <div class="hint" id="fxSalvarAviso" style="display:none"></div>
   <div class="nao-no-pdf" id="fxPassagem" style="display:none">
     <div class="step-label" style="margin-top:14px">Continuar em outro aparelho</div>
     <div class="hint" id="fxPassagemAviso" style="margin-top:0"></div>
@@ -465,7 +460,6 @@
 
   <div class="controls" style="margin-top:22px">
     <button class="btn ghost" id="btnLimparPasta" onclick="limparPasta()">Limpar esta aba</button>
-    <span class="hint" style="margin:0">Solta a pasta da aula e zera o painel. Cópias em andamento continuam.</span>
   </div>
 </div><!-- fim main-pasta -->
 </div><!-- fim wrap -->
@@ -1530,18 +1524,6 @@ function baixar(nome,blob){
   a.href=url; a.download=nome; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(function(){URL.revokeObjectURL(url);},2000);
 }
-function dizAviso(txt){
-  const el=document.getElementById('fxSalvarAviso');
-  if(!el)return;
-  el.textContent=txt||'';
-  el.style.display=txt?'block':'none';
-}
-/* O Chrome recusa pastas do sistema — a raiz do iCloud no Mac e uma delas. */
-function pastaRecusada(e){
-  const m=((e&&e.message)||'')+' '+((e&&e.name)||'');
-  return /system files|arquivos do sistema|SecurityError|NotAllowedError/i.test(m);
-}
-
 /* Um botao so: monta o PDF e o arquivo do fluxo e guarda os dois no mesmo lugar.
    No PC vao para a pasta escolhida; no iPad e no iPhone sao baixados, que no
    Safari cai no iCloud Drive.                                                */
@@ -1550,7 +1532,7 @@ async function salvarTudo(trocarPasta){
   if(gerandoPdf)return;
   const btn=document.getElementById('btnSalvar');
   const diz=function(t){ if(btn)btn.textContent=t; };
-  gerandoPdf=true; if(btn)btn.disabled=true; dizAviso('');
+  gerandoPdf=true; if(btn)btn.disabled=true;
   try{
     const base=nomeBaseDoFluxo();
     const dados=new Blob([JSON.stringify(pacoteFluxo(),null,2)],{type:'application/json'});
@@ -1567,15 +1549,7 @@ async function salvarTudo(trocarPasta){
         pasta=pastaFluxo;
       }catch(e){
         if(e.name==='AbortError'){ diz('Salvar'); return; }   /* desistiu de escolher */
-        pastaFluxo=null;
-        if(pastaRecusada(e)){
-          dizAviso('O navegador não deixa escolher essa pasta porque ela fica dentro de uma '
-            +'área do sistema — é o caso da raiz do iCloud Drive no Mac. Os dois arquivos foram '
-            +'baixados; se quiser que caiam direto no iCloud, aponte a pasta de download do navegador '
-            +'para uma pasta sua dentro do iCloud Drive.');
-        }else{
-          dizAviso('Não deu para usar a pasta ('+(e.message||e.name)+'). Os dois arquivos foram baixados.');
-        }
+        pastaFluxo=null;              /* pasta recusada pelo navegador: baixa os arquivos */
       }
     }
     if(pasta){
