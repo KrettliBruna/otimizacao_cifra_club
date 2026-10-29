@@ -137,9 +137,16 @@
   #fxTitulo{font-size:1.4rem;padding:14px;}
   .fx-cab input.fx-data,.fx-dia input.fx-data,
   table.fx td input.fx-datacena{font-size:1.02rem;}
-  table.fx{width:100%;border-collapse:collapse;margin-top:6px;table-layout:fixed;}
-  table.fx th{background:var(--panel);border:1px solid var(--line);padding:7px 8px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);}
-  table.fx td{border:1px solid var(--line);padding:0;background:var(--panel);}
+  /* bordas arredondadas como os campos do cabecalho: para o canto arredondar,
+     as bordas nao podem colapsar — cada celula desenha so a direita e a de
+     baixo, e a moldura fica na propria tabela.                            */
+  table.fx{width:100%;border-collapse:separate;border-spacing:0;margin-top:6px;table-layout:fixed;
+    border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--panel);}
+  table.fx th{background:var(--panel);border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+    padding:7px 8px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);}
+  table.fx td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:0;background:var(--panel);}
+  table.fx th:last-child,table.fx td:last-child{border-right:none;}
+  table.fx tr:last-child td{border-bottom:none;}
   /* cada linha com altura de duas linhas de texto: sobra espaco pra escrever a mao */
   table.fx td input{width:100%;border:none;background:transparent;color:var(--ink);padding:16px 8px;font-size:0.86rem;font-family:inherit;}
   table.fx td input:focus{outline:2px solid var(--amber);outline-offset:-2px;}
@@ -147,9 +154,9 @@
     cursor:default;user-select:none;-webkit-user-select:none;}
   /* linhas marcadas com o mouse, para apagar de uma vez */
   table.fx tr.sel td:not(.diaria){background:var(--amber-soft);}
-  table.fx tr.divisor td{background:transparent;border:none;border-top:1px solid var(--muted);padding:14px 2px 6px;
+  table.fx tr.divisor td{background:transparent;border:none;border-top:1px solid var(--muted);border-bottom:none;padding:14px 2px 6px;
     font-size:0.68rem;letter-spacing:0.18em;color:var(--muted);font-weight:700;}
-  table.fx tr.espaco td{height:14px;background:transparent;border-left:none;border-right:none;}
+  table.fx tr.espaco td{height:14px;background:transparent;border-left:none;border-right:none;border-bottom:none;}
   td.diaria{text-align:center;cursor:pointer;user-select:none;width:34px;font-weight:700;font-size:0.78rem;}
   td.diaria{transition:background-color .12s ease;}
   tr.d1 td.diaria{background:var(--ink);color:var(--on-ink);}
@@ -214,8 +221,10 @@
   /* dentro da tabela o campo fica transparente: fundo branco por cima
      comia as linhas que dividem as colunas */
   table.fx td input{background:transparent!important;}
-  table.fx{border-collapse:collapse!important;}
-  table.fx td,table.fx th{border:1px solid #000;background:#fff;color:#000;}
+  table.fx{border-collapse:separate!important;border-spacing:0!important;border:1px solid #000!important;border-radius:9px;overflow:hidden;}
+  table.fx td,table.fx th{border:none;border-right:1px solid #000;border-bottom:1px solid #000;background:#fff;color:#000;}
+  table.fx th:last-child,table.fx td:last-child{border-right:none;}
+  table.fx tr:last-child td{border-bottom:none;}
   /* o PDF e colorido: as diarias saem com a cor cheia, como na tela */
   table.fx td.diaria{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;font-weight:700;}
   table.fx tr.d1 td.diaria{background:#fff!important;color:#000!important;}
@@ -2665,7 +2674,23 @@ function irParaLinha(passo,campo){
   try{ destino.setSelectionRange(n,n); }catch(e){}
   return true;
 }
-let selCenas={de:null,ate:null,arrastando:false};
+/* pula para o campo do lado, na mesma linha: Cam -> Take -> Data -> Observacoes */
+function irParaCampo(passo,campo){
+  const tr=campo.closest('tr');
+  if(!tr)return false;
+  const campos=Array.from(tr.querySelectorAll('input')).filter(function(c){
+    const td=c.closest('td');                     /* pula a coluna escondida no modelo */
+    return !td || window.getComputedStyle(td).display!=='none';
+  });
+  const i=campos.indexOf(campo);
+  const destino=campos[i+passo];
+  if(i<0 || !destino)return false;
+  destino.focus();
+  const n=passo>0?0:destino.value.length;
+  try{ destino.setSelectionRange(n,n); }catch(e){}
+  return true;
+}
+let selCenas={de:null,ate:null,arrastando:false,pendente:null};
 function faixaSelecionada(){
   if(selCenas.de===null)return null;
   return [Math.min(selCenas.de,selCenas.ate),Math.max(selCenas.de,selCenas.ate)];
@@ -2676,7 +2701,7 @@ function pintarSelecao(){
     tr.classList.toggle('sel', !!f && i>=f[0] && i<=f[1]);
   });
 }
-function limparSelecao(){ selCenas={de:null,ate:null,arrastando:false}; pintarSelecao(); }
+function limparSelecao(){ selCenas={de:null,ate:null,arrastando:false,pendente:null}; pintarSelecao(); }
 function apagarSelecionadas(){
   const f=faixaSelecionada();
   if(!f)return false;
@@ -2698,8 +2723,18 @@ function apagarSelecionadas(){
   if(!tabela)return;
   tabela.addEventListener('keydown',function(e){
     if(e.target.tagName!=='INPUT')return;
-    if(e.key!=='ArrowUp' && e.key!=='ArrowDown')return;
-    if(irParaLinha(e.key==='ArrowDown'?1:-1,e.target))e.preventDefault();
+    if(e.key==='ArrowUp' || e.key==='ArrowDown'){
+      if(irParaLinha(e.key==='ArrowDown'?1:-1,e.target))e.preventDefault();
+      return;
+    }
+    /* esquerda e direita andam dentro do texto; na ponta, pulam de campo */
+    if(e.key!=='ArrowLeft' && e.key!=='ArrowRight')return;
+    const campo=e.target;
+    if(campo.selectionStart!==campo.selectionEnd)return;      /* tem texto marcado */
+    const naPonta = e.key==='ArrowLeft' ? campo.selectionStart===0
+                                        : campo.selectionStart===campo.value.length;
+    if(!naPonta)return;
+    if(irParaCampo(e.key==='ArrowRight'?1:-1,campo))e.preventDefault();
   });
   const indiceDe=function(alvo){
     const tr=alvo.closest && alvo.closest('tr[data-indice]');
@@ -2707,22 +2742,36 @@ function apagarSelecionadas(){
   };
   tabela.addEventListener('mousedown',function(e){
     if(e.button!==0)return;                       /* so o botao esquerdo */
-    const cel=e.target.closest && e.target.closest('td');
-    if(!cel || !cel.classList.contains('cena'))return;   /* arrasta pelo nome da cena */
     const i=indiceDe(e.target);
     if(i<0)return;
-    e.preventDefault();
-    selCenas={de:i,ate:i,arrastando:true};
-    pintarSelecao();
+    const cel=e.target.closest && e.target.closest('td');
+    const emCampo=e.target.tagName==='INPUT';
+    if(!emCampo && cel && !cel.classList.contains('diaria')){
+      e.preventDefault();                         /* fora de campo: marca na hora */
+      selCenas={de:i,ate:i,arrastando:true,pendente:null};
+      pintarSelecao();
+      return;
+    }
+    /* comecou dentro de um campo: so vira selecao de linhas se o mouse sair
+       desta linha, para nao atrapalhar quem quer marcar o texto do campo */
+    if(emCampo)selCenas.pendente=i;
   });
   tabela.addEventListener('mouseover',function(e){
-    if(!selCenas.arrastando)return;
     const i=indiceDe(e.target);
-    if(i<0 || i===selCenas.ate)return;
+    if(i<0)return;
+    if(!selCenas.arrastando){
+      if(selCenas.pendente===null || !(e.buttons&1) || i===selCenas.pendente)return;
+      selCenas={de:selCenas.pendente,ate:i,arrastando:true,pendente:null};
+      pintarSelecao();
+      return;
+    }
+    if(i===selCenas.ate)return;
     selCenas.ate=i;
     pintarSelecao();
   });
-  document.addEventListener('mouseup',function(){ selCenas.arrastando=false; });
+  document.addEventListener('mouseup',function(){
+    selCenas.arrastando=false; selCenas.pendente=null;
+  });
   document.addEventListener('keydown',function(e){
     if(e.key==='Escape'){ limparSelecao(); return; }
     if(e.key!=='Delete' && e.key!=='Backspace')return;
