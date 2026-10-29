@@ -173,8 +173,13 @@
   .fx-outro{display:block;}
   .fx-outro .fx-grupo{display:block;margin-bottom:5px;}
   @media(max-width:760px){.fx-cab{grid-template-columns:1fr 1fr;}}
-  .fx-qr{display:inline-block;background:#fff;padding:12px;border:1px solid var(--line);border-radius:10px;margin:10px 0;}
-  .fx-qr svg{display:block;width:230px;height:230px;}
+  /* o QR precisa sair grande: apertado demais a camera nao le */
+  /* so valores simples aqui: o gerador de PDF le esta folha inteira e
+     reclama de funcao de CSS que ele nao sabe interpretar */
+  .fx-qr{display:inline-block;background:#fff;padding:14px;border:1px solid var(--line);border-radius:10px;margin:10px 0;max-width:100%;}
+  .fx-qr svg{display:block;width:420px;max-width:100%;height:auto;}
+  .fx-link{width:100%;max-width:560px;display:block;font-family:'Courier New',monospace;font-size:0.72rem;
+    padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);resize:vertical;word-break:break-all;}
   .chk{display:flex;align-items:center;gap:8px;font-size:0.86rem;color:var(--muted);margin-top:4px;cursor:pointer;}
 </style>
 <!-- As regras de impressao moram aqui para serem reaproveitadas pelo gerador de PDF:
@@ -396,18 +401,21 @@
   </div>
 
   <div class="controls">
-    <button class="btn" id="btnSalvarPdf" onclick="salvarPdfFluxo()">Salvar PDF</button>
+    <button class="btn" id="btnSalvar" onclick="salvarTudo()">Salvar</button>
     <button class="btn ghost" id="btnPassar" onclick="abrirPassagem()">Continuar em outro aparelho</button>
-    <button class="btn ghost" id="btnSalvarFluxo" onclick="salvarFluxoNaPasta()">Salvar fluxo…</button>
+    <button class="btn ghost" id="btnRefazer" onclick="refazerDoRoteiro()">Refazer do roteiro</button>
     <button class="btn ghost" id="btnAbrirFluxo" onclick="document.getElementById('fxArquivoFluxo').click()">Abrir fluxo…</button>
     <input type="file" id="fxArquivoFluxo" accept=".fluxo,.json,application/json" style="display:none">
-    <span class="folder-name" id="fxPastaNome">nenhuma pasta escolhida</span>
+    <button class="mini" id="btnTrocarPasta" onclick="salvarTudo(true)">Trocar pasta</button>
+    <span class="folder-name" id="fxPastaNome">vai perguntar onde salvar</span>
     <span class="copied" id="fxSalvoOk" style="display:none">✓ salvo</span>
   </div>
+  <div class="hint" id="fxSalvarAviso" style="display:none"></div>
   <div class="nao-no-pdf" id="fxPassagem" style="display:none">
     <div class="step-label" style="margin-top:14px">Continuar em outro aparelho</div>
     <div class="hint" id="fxPassagemAviso" style="margin-top:0"></div>
     <div id="fxQr" class="fx-qr"></div>
+    <textarea id="fxLink" class="fx-link" readonly rows="3" placeholder="o link aparece aqui"></textarea>
     <div class="controls">
       <button class="mini" onclick="copiarLinkFluxo()">Copiar link</button>
       <span class="copied" id="fxLinkOk" style="display:none">✓ copiado</span>
@@ -860,6 +868,7 @@ function escapeHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
 
 function limpar(){
   bpmDoPdf={ensina:'',toca:''};
+  instrutorDoPdf='';
   STATE={ordered:[],flux:[],todas:[],secoes:[]};   /* a tabela do fluxo esvazia na hora */
   esquecerPastaTP();
   document.getElementById('pdfStatus').innerHTML='';
@@ -1480,38 +1489,98 @@ async function pintarBloco(el){
   return {canvas:canvas,cortes:cortesDoBloco};
 }
 
-let gerandoPdf=false;
-async function salvarPdfFluxo(){
-  if(gerandoPdf)return;
-  const btn=document.getElementById('btnSalvarPdf');
-  const diz=function(t){ if(btn)btn.textContent=t; };
+async function montarPdfFluxo(diz){
   const blocos=blocosDoFluxo();
-  if(!blocos.length){ alert('Não há nada no fluxo para salvar ainda.'); return; }
-  gerandoPdf=true; if(btn)btn.disabled=true; diz('Montando o PDF…');
+  if(!blocos.length)throw new Error('não há nada no fluxo ainda');
+  await carregarLibsPdf();
+  const pintados=[];
+  for(let i=0;i<blocos.length;i++){
+    diz('Montando o PDF… '+(i+1)+'/'+blocos.length);
+    pintados.push(await pintarBloco(blocos[i]));
+  }
+  const medidos=pintados.map(function(p){
+    return {altura:PDF_UTIL_X*p.canvas.height/p.canvas.width, cortes:p.cortes};
+  });
+  const plano=distribuirBlocos(medidos,PDF_UTIL_Y,PDF_ESPACO);
+  const pdf=new window.jspdf.jsPDF({orientation:'p',unit:'mm',format:'a4'});
+  let paginaAtual=0;
+  plano.forEach(function(pe){
+    while(paginaAtual<pe.pagina){ pdf.addPage(); paginaAtual++; }
+    const c=fatiarCanvas(pintados[pe.bloco].canvas,pe.de,pe.ate);
+    pdf.addImage(c.toDataURL('image/png'),'PNG',
+      PDF_MARGEM,PDF_MARGEM+pe.y,PDF_UTIL_X,pe.altura,undefined,'FAST');
+  });
+  return pdf.output('blob');
+}
+
+function baixar(nome,blob){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=nome; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){URL.revokeObjectURL(url);},2000);
+}
+function dizAviso(txt){
+  const el=document.getElementById('fxSalvarAviso');
+  if(!el)return;
+  el.textContent=txt||'';
+  el.style.display=txt?'block':'none';
+}
+/* O Chrome recusa pastas do sistema — a raiz do iCloud no Mac e uma delas. */
+function pastaRecusada(e){
+  const m=((e&&e.message)||'')+' '+((e&&e.name)||'');
+  return /system files|arquivos do sistema|SecurityError|NotAllowedError/i.test(m);
+}
+
+/* Um botao so: monta o PDF e o arquivo do fluxo e guarda os dois no mesmo lugar.
+   No PC vao para a pasta escolhida; no iPad e no iPhone sao baixados, que no
+   Safari cai no iCloud Drive.                                                */
+let gerandoPdf=false;
+async function salvarTudo(trocarPasta){
+  if(gerandoPdf)return;
+  const btn=document.getElementById('btnSalvar');
+  const diz=function(t){ if(btn)btn.textContent=t; };
+  gerandoPdf=true; if(btn)btn.disabled=true; dizAviso('');
   try{
-    await carregarLibsPdf();
-    const pintados=[];
-    for(let i=0;i<blocos.length;i++){
-      diz('Montando o PDF… '+(i+1)+'/'+blocos.length);
-      pintados.push(await pintarBloco(blocos[i]));
+    const base=nomeBaseDoFluxo();
+    const dados=new Blob([JSON.stringify(pacoteFluxo(),null,2)],{type:'application/json'});
+    diz('Montando o PDF…');
+    const pdf=await montarPdfFluxo(diz);
+
+    let pasta=null;
+    if(TEM_FS){
+      try{
+        if(trocarPasta || !pastaFluxo || !(await temPermissao(pastaFluxo,true))){
+          pastaFluxo=await window.showDirectoryPicker({mode:'readwrite',id:'pastaFluxo'});
+          await guardar('pastaFluxo',pastaFluxo);
+        }
+        pasta=pastaFluxo;
+      }catch(e){
+        if(e.name==='AbortError'){ diz('Salvar'); return; }   /* desistiu de escolher */
+        pastaFluxo=null;
+        if(pastaRecusada(e)){
+          dizAviso('O navegador não deixa escolher essa pasta porque ela fica dentro de uma '
+            +'área do sistema — é o caso da raiz do iCloud Drive no Mac. Os dois arquivos foram '
+            +'baixados; se quiser que caiam direto no iCloud, aponte a pasta de download do navegador '
+            +'para uma pasta sua dentro do iCloud Drive.');
+        }else{
+          dizAviso('Não deu para usar a pasta ('+(e.message||e.name)+'). Os dois arquivos foram baixados.');
+        }
+      }
     }
-    const medidos=pintados.map(function(p){
-      return {altura:PDF_UTIL_X*p.canvas.height/p.canvas.width, cortes:p.cortes};
-    });
-    const plano=distribuirBlocos(medidos,PDF_UTIL_Y,PDF_ESPACO);
-    const pdf=new window.jspdf.jsPDF({orientation:'p',unit:'mm',format:'a4'});
-    let paginaAtual=0;
-    plano.forEach(function(pe){
-      while(paginaAtual<pe.pagina){ pdf.addPage(); paginaAtual++; }
-      const c=fatiarCanvas(pintados[pe.bloco].canvas,pe.de,pe.ate);
-      pdf.addImage(c.toDataURL('image/png'),'PNG',
-        PDF_MARGEM,PDF_MARGEM+pe.y,PDF_UTIL_X,pe.altura,undefined,'FAST');
-    });
-    pdf.save(nomeDoPdf());
-    diz('Salvar PDF');
+    if(pasta){
+      await gravar(pasta,base+'.pdf',pdf);
+      await gravar(pasta,base+'_fluxo.json',dados);
+      const el=document.getElementById('fxPastaNome');
+      if(el){ el.textContent=pasta.name; el.classList.add('ativa'); }
+    }else{
+      baixar(base+'.pdf',pdf);
+      baixar(base+'_fluxo.json',dados);
+    }
+    diz('Salvar');
+    flash('fxSalvoOk');
   }catch(e){
-    diz('Salvar PDF');
-    alert('Não deu para montar o PDF: '+(e&&e.message?e.message:e));
+    diz('Salvar');
+    alert('Não deu para salvar: '+(e&&e.message?e.message:e));
   }finally{
     gerandoPdf=false; if(btn)btn.disabled=false;
   }
@@ -1520,7 +1589,9 @@ async function salvarPdfFluxo(){
    Dois caminhos, nos dois sentidos: um link (com QR, pra ler com a camera)
    e um arquivo .fluxo, que pode morar no iCloud.                        */
 const LIB_QR='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
-const QR_LIMITE=2200;        /* acima disso o QR fica denso demais pra camera */
+/* Acima disso o QR vira um quadriculado fino demais para a camera acertar;
+   melhor mandar usar o link ou o arquivo do que desenhar um codigo ilegivel. */
+const QR_LIMITE=1100;
 
 /* Tudo que a aba Fluxo precisa para se remontar no outro aparelho, no menor
    tamanho possivel: o que esta vazio nao viaja, e o preenchimento das cenas
@@ -1625,6 +1696,14 @@ async function desempacotarTexto(cod){
   const esc=ds.writable.getWriter(); esc.write(corpo); esc.close();
   return new TextDecoder().decode(await new Response(ds.readable).arrayBuffer());
 }
+/* o link so serve se a pagina veio de um endereco de verdade: um arquivo
+   aberto do proprio aparelho vira file://, que a camera do iPhone recusa */
+function temEnderecoDeSite(){
+  return location.protocol==='http:' || location.protocol==='https:';
+}
+const AVISO_ARQUIVO='Esta página foi aberta como arquivo salvo no aparelho, '
+  +'e não pelo endereço do site. Um link assim a câmera do iPhone recusa '
+  +'("nenhum dado utilizável"). Abra a página pelo link do site e gere o código de lá.';
 async function linkDoFluxo(){
   const cod=await empacotarTexto(JSON.stringify(pacoteFluxo()));
   return location.origin+location.pathname+'#f='+cod;
@@ -1636,13 +1715,21 @@ async function abrirPassagem(){
   const aviso=document.getElementById('fxPassagemAviso');
   const alvo=document.getElementById('fxQr');
   if(!caixa)return;
+  const caixaLink=document.getElementById('fxLink');
   caixa.style.display='block';
   alvo.innerHTML=''; aviso.textContent='Preparando…';
+  if(caixaLink)caixaLink.value='';
+  if(!temEnderecoDeSite()){
+    aviso.textContent=AVISO_ARQUIVO+' Para passar o fluxo agora, use "Salvar fluxo…" e abra o arquivo no outro aparelho.';
+    return;
+  }
   try{
     ultimoLink=await linkDoFluxo();
+    if(caixaLink)caixaLink.value=ultimoLink;
     if(ultimoLink.length>QR_LIMITE){
-      aviso.textContent='Este fluxo ficou grande demais para o QR ('+ultimoLink.length
-        +' caracteres). Use "Copiar link" e mande para você mesma, ou "Salvar fluxo…" e abra o arquivo no outro aparelho.';
+      aviso.textContent='Este fluxo deu '+ultimoLink.length+' caracteres — um QR desse tamanho '
+        +'fica fino demais e a câmera não acerta. Use "Copiar link" e mande para você mesma, '
+        +'ou "Salvar fluxo…" e abra o arquivo no outro aparelho.';
       return;
     }
     if(!window.qrcode)await carregarScript(LIB_QR);
@@ -1650,8 +1737,10 @@ async function abrirPassagem(){
     const qr=window.qrcode(0,'L');
     qr.addData(ultimoLink);
     qr.make();
-    alvo.innerHTML=qr.createSvgTag(5,0);
-    aviso.textContent='Aponte a câmera do iPad ou do celular para o código: o site abre já com este fluxo preenchido.';
+    alvo.innerHTML=qr.createSvgTag(8,2);
+    aviso.textContent='Aponte a câmera do iPad ou do celular para o código ('+ultimoLink.length
+      +' caracteres): o site abre já com este fluxo preenchido. Se a câmera não pegar, '
+      +'aumente o zoom da página ou use "Copiar link".';
   }catch(e){
     aviso.textContent='Não deu para montar o QR ('+(e&&e.message?e.message:e)
       +'). Use "Copiar link" ou "Salvar fluxo…".';
@@ -1662,6 +1751,7 @@ function fecharPassagem(){
   if(caixa)caixa.style.display='none';
 }
 async function copiarLinkFluxo(){
+  if(!temEnderecoDeSite()){ alert(AVISO_ARQUIVO); return; }
   try{
     const link=ultimoLink||await linkDoFluxo();
     ultimoLink=link;
@@ -1696,16 +1786,40 @@ async function abrirArquivoFluxo(arq){
   }catch(e){ alert('Não deu para abrir este arquivo: '+(e&&e.message?e.message:e)); }
 }
 
-function nomeDoPdf(){
+/* os dois arquivos saem com o mesmo nome base: <aula>.pdf e <aula>_fluxo.json */
+function nomeBaseDoFluxo(){
   const campo=document.getElementById('nomeAula');
   const nome=(FLUXO.titulo||(campo?campo.value:'')||'').trim();
-  return (nome?slugifyAula(nome):'fluxo')+'.pdf';
+  return nome?slugifyAula(nome):'fluxo';
 }
 
 /* ================= limpar por aba ================= */
 /* Cancelar no aviso do navegador para a limpeza; onde nao existe aviso, segue direto. */
 function confirmar(txt){
   try{ return window.confirm(txt)!==false; }catch(e){ return true; }
+}
+/* le de novo o roteiro que esta na aba TP e monta o fluxo do zero em cima dele:
+   serve quando o roteiro mudou, ou quando se quer comecar o preenchimento limpo */
+function refazerDoRoteiro(){
+  if(!ta.value.trim()){
+    alert('Não há roteiro nenhum na aba TP. Suba o PDF ou cole o roteiro lá primeiro.');
+    switchMain('tp');
+    return;
+  }
+  processar();                                  /* re-le o roteiro da aba TP */
+  if(!(STATE.flux||[]).length){
+    alert('Não achei cena nenhuma no roteiro. Abra a aba TP, confira o roteiro e tente de novo.');
+    return;
+  }
+  if(!confirmar('Refazer o fluxo a partir do roteiro? O que já estava preenchido neste fluxo se perde.'))return;
+  const modelo=FLUXO.modelo;
+  FLUXO=fluxoVazio(modelo);
+  salvarFluxoLocal();
+  repintarFluxo();
+  preencherFluxoDoRoteiro();                    /* instrutor, BPM e nome voltam do roteiro */
+  salvarFluxoLocal();
+  switchMain('fluxo');
+  flash('fxSalvoOk');
 }
 /* zera so o fluxo desta aula — as cenas voltam sozinhas do roteiro */
 function limparFluxo(perguntar){
@@ -1919,8 +2033,9 @@ async function lerPdfEMontar(file){
   const nome=nomeDoRoteiro(texto);
   bpmDoPdf=lerBpm(texto);                                  /* antes de descartar o cabecalho */
   carregarTextoRoteiro(roteiroLimpo(parse(texto)),nome);   /* so cenas e falas vao pro campo */
-  const inst=instrutorPeloNome(apresentadorDoRoteiro(texto));
-  if(inst){ FLUXO.instrutor=inst; const sel=document.getElementById('fxInstrutor'); if(sel)sel.value=inst; aplicarInstrumentoPadrao(); salvarFluxoLocal(); }
+  instrutorDoPdf=instrutorPeloNome(apresentadorDoRoteiro(texto));   /* a linha do apresentador sai do campo */
+  if(instrutorDoPdf){ FLUXO.instrutor=instrutorDoPdf; const sel=document.getElementById('fxInstrutor');
+    if(sel)sel.value=instrutorDoPdf; aplicarInstrumentoPadrao(); salvarFluxoLocal(); }
   const secoes=(STATE.secoes||[]);
   const porSecao=secoes.map(function(sec){
     return sec+' ('+STATE.todas.filter(function(c){return c.secao===sec;}).length+')';
@@ -2287,12 +2402,18 @@ function preencherFluxoDoRoteiro(){
   sincronizarChaveFluxo();
   const nome=document.getElementById('nomeAula').value.trim();
   if(nome && !FLUXO.titulo){ FLUXO.titulo=nome; document.getElementById('fxTitulo').value=nome; }
+  if(!FLUXO.instrutor){
+    const inst=instrutorDoPdf||instrutorPeloNome(apresentadorDoRoteiro(ta.value));
+    if(inst){ FLUXO.instrutor=inst; const sel=document.getElementById('fxInstrutor');
+      if(sel)sel.value=inst; aplicarInstrumentoPadrao(); }
+  }
   const bpm=bpmDoRoteiro();
   if(bpm.ensina && !FLUXO.bpmEnsina){ FLUXO.bpmEnsina=bpm.ensina; document.getElementById('fxBpmEnsina').value=bpm.ensina; }
   if(bpm.toca && !FLUXO.bpmToca){ FLUXO.bpmToca=bpm.toca; document.getElementById('fxBpmToca').value=bpm.toca; }
   salvarFluxoLocal();
 }
 let bpmDoPdf={ensina:'',toca:''};   /* lidos do PDF antes de o cabecalho ser descartado */
+let instrutorDoPdf='';              /* idem: a linha do apresentador nao fica no campo */
 /* BPM: "BPM: 50" perto das cenas de ensina; "Bpm da musica: 79" no cabecalho = toca */
 function bpmDoRoteiro(){
   if(bpmDoPdf.ensina||bpmDoPdf.toca)return bpmDoPdf;
@@ -2360,34 +2481,6 @@ function aplicarInstrumentoPadrao(){
   if(sel)sel.value=padrao;
   salvarFluxoLocal();
 }
-async function salvarFluxoNaPasta(){
-  const nomeArq=(function(){
-    const n=document.getElementById('nomeAula').value.trim();
-    return (n?slugifyAula(n):'fluxo')+'_fluxo.json';
-  })();
-  const conteudo=JSON.stringify(pacoteFluxo(),null,2);
-  /* no iPad e no iPhone nao da para escolher pasta: baixa o arquivo,
-     que a pessoa guarda nos Arquivos (iCloud) e abre no outro aparelho */
-  if(!TEM_FS){
-    const url=URL.createObjectURL(new Blob([conteudo],{type:'application/json'}));
-    const a=document.createElement('a');
-    a.href=url; a.download=nomeArq; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function(){URL.revokeObjectURL(url);},2000);
-    flash('fxSalvoOk');
-    return;
-  }
-  try{
-    if(!pastaFluxo || !(await temPermissao(pastaFluxo,true))){
-      pastaFluxo=await window.showDirectoryPicker({mode:'readwrite',id:'pastaFluxo'});
-      await guardar('pastaFluxo',pastaFluxo);
-      const el=document.getElementById('fxPastaNome');
-      el.textContent=pastaFluxo.name; el.classList.add('ativa');
-    }
-    await gravar(pastaFluxo,nomeArq,new Blob([conteudo],{type:'application/json'}));
-    flash('fxSalvoOk');
-  }catch(e){ if(e.name!=='AbortError')alert('Não consegui salvar: '+e.message); }
-}
-
 /* ================= tipos de fluxo ================= */
 const MODELOS=['padrao','diarias','micro'];
 function trocarModelo(m){
