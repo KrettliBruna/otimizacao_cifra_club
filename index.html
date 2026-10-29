@@ -479,7 +479,7 @@
     <!-- fora da vista em vez de display:none: no iPhone e no iPad o Safari nao
          abre o seletor de um campo escondido.
          E sem accept de proposito: o iOS deixa cinza toda extensao que nao
-         conhece, e .fluxo e uma delas. Se vier o arquivo errado, avisa. -->
+         conhece. Se vier o arquivo errado, avisa. -->
     <input type="file" id="fxArquivoFluxo" class="arquivo-fora">
     <button class="mini" id="btnTrocarPasta" onclick="salvarTudo(true)">Trocar pasta</button>
     <span class="folder-name" id="fxPastaNome"></span>
@@ -4434,16 +4434,13 @@ async function salvarTudo(trocarPasta){
         pastaFluxo=null;              /* pasta recusada pelo navegador: baixa os arquivos */
       }
     }
-    /* a vista fica so com o PDF; o arquivo do fluxo vai junto com um ponto na
-       frente do nome, que o Finder e o Explorer escondem. No celular e no iPad
-       nem isso: so o PDF, que e o que se usa la.                            */
+    /* a pasta da aula fica so com o PDF; o arquivo que o "Abrir fluxo…" le vai
+       para a subpasta PASTA_FLUXOS. No celular e no iPad nao da pra gravar em
+       pasta: la sai so o PDF, que e o que se usa.                           */
     if(pasta){
       await gravar(pasta,base+'.pdf',pdf);
-      /* o arquivo do fluxo vai para uma subpasta: assim a pasta da aula fica
-         so com o PDF, e o ponto no nome nao bastava — o Explorer do Windows
-         mostra arquivo com ponto do mesmo jeito.                           */
-      const guardados=await pasta.getDirectoryHandle('fluxos',{create:true});
-      await gravar(guardados,base+'.fluxo',dados);
+      const guardados=await pasta.getDirectoryHandle(PASTA_FLUXOS,{create:true});
+      await gravar(guardados,base+'.json',dados);
       const el=document.getElementById('fxPastaNome');
       if(el){ el.textContent=pasta.name; el.classList.add('ativa'); }
     }else{
@@ -4460,7 +4457,7 @@ async function salvarTudo(trocarPasta){
 }
 /* ============ levar o fluxo de um aparelho para o outro ============
    Dois caminhos, nos dois sentidos: um link (com QR, pra ler com a camera)
-   e um arquivo .fluxo, que pode morar no iCloud.                        */
+   e um arquivo .json, que pode morar no iCloud.                        */
 const LIB_QR='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
 /* Acima disso o QR vira um quadriculado fino demais para a camera acertar;
    melhor mandar usar o link ou o arquivo do que desenhar um codigo ilegivel. */
@@ -4659,12 +4656,15 @@ async function abrirArquivoFluxo(arq){
     aplicarPacote(pacote);
     flash('fxSalvoOk');
   }catch(e){
-    alert('Este arquivo não é um fluxo salvo. Escolha o arquivo da pasta "fluxos", '+
-          'com o nome da aula e terminado em .fluxo.');
+    alert('Este arquivo não é um fluxo salvo. Escolha o arquivo com o nome da '+
+          'aula que está na pasta "'+PASTA_FLUXOS+'".');
   }
 }
 
-/* os dois arquivos saem com o mesmo nome base: <aula>.pdf e <aula>_fluxo.json */
+/* os dois arquivos saem com o mesmo nome da aula: o <aula>.pdf fica na pasta
+   da aula e o <aula>.json vai para a subpasta abaixo, que e de onde o botao
+   "Abrir fluxo…" le.                                                        */
+const PASTA_FLUXOS='abrir_fluxos_html';
 function nomeBaseDoFluxo(){
   const campo=document.getElementById('nomeAula');
   const nome=(FLUXO.titulo||(campo?campo.value:'')||'').trim();
