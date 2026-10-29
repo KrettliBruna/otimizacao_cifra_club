@@ -157,11 +157,8 @@
   /* cada linha com altura de duas linhas de texto: sobra espaco pra escrever a mao */
   table.fx td input{width:100%;border:none;background:transparent;color:var(--ink);padding:16px 8px;font-size:0.86rem;font-family:inherit;}
   table.fx td input:focus{outline:2px solid var(--amber);outline-offset:-2px;}
-  table.fx td.cena{font-family:'Courier New',monospace;font-weight:700;text-align:center;padding:16px 10px;white-space:nowrap;
-    cursor:default;user-select:none;-webkit-user-select:none;}
-  /* linhas marcadas com o mouse, para apagar de uma vez */
-  table.fx tr.sel td:not(.diaria){background:var(--amber-soft);}
-  table.fx tr.divisor td{background:transparent;border:none;border-top:1px solid var(--muted);border-bottom:none;padding:14px 2px 6px;
+  table.fx td.cena{font-family:'Courier New',monospace;font-weight:700;text-align:center;padding:16px 10px;white-space:nowrap;}
+  table.fx tr.divisor td{background:transparent;border:none;padding:14px 2px 6px;
     font-size:0.68rem;letter-spacing:0.18em;color:var(--muted);font-weight:700;}
   table.fx tr.espaco td{height:14px;background:transparent;border-left:none;border-right:none;border-bottom:none;}
   td.diaria{text-align:center;cursor:pointer;user-select:none;width:34px;font-weight:700;font-size:0.78rem;}
@@ -236,7 +233,6 @@
   table.fx tr.d2 td.diaria{background:#2f6fd0!important;color:#fff!important;}
   table.fx tr.d3 td.diaria{background:#cc2b2b!important;color:#fff!important;}
   table.fx tr.faixa td{background:#efefef;color:#000;}
-  table.fx tr.sel td:not(.diaria){background:#fff!important;}   /* marcacao nao vai pro PDF */
   /* produtora, violao, guitarra e os rotulos saiam em preto, nao no cinza da tela */
   .fx-chip,.fx-grupo,.fx-cab label,.fx-dia .num,.fx-dia .rot{color:#000!important;}
   .fx-chip{background:#fff!important;border:1px solid #000!important;}
@@ -2715,34 +2711,6 @@ function irParaCampo(passo,campo){
   try{ destino.setSelectionRange(n,n); }catch(e){}
   return true;
 }
-let selCenas={de:null,ate:null,arrastando:false,pendente:null};
-function faixaSelecionada(){
-  if(selCenas.de===null)return null;
-  return [Math.min(selCenas.de,selCenas.ate),Math.max(selCenas.de,selCenas.ate)];
-}
-function pintarSelecao(){
-  const f=faixaSelecionada();
-  linhasDasCenas().forEach(function(tr,i){
-    tr.classList.toggle('sel', !!f && i>=f[0] && i<=f[1]);
-  });
-}
-function limparSelecao(){ selCenas={de:null,ate:null,arrastando:false,pendente:null}; pintarSelecao(); }
-function apagarSelecionadas(){
-  const f=faixaSelecionada();
-  if(!f)return false;
-  const cenas=(STATE.flux||[]);
-  for(let i=f[0];i<=f[1];i++){
-    const sc=cenas[i];
-    if(!sc)continue;
-    const k=chaveCena(sc,i);
-    if(!FLUXO.cenas[k])continue;
-    ['cam','takes','obs','dataGrav'].forEach(function(campo){ FLUXO.cenas[k][campo]=''; });
-  }
-  salvarFluxoLocal();
-  renderFluxoCenas();
-  pintarSelecao();
-  return true;
-}
 (function(){
   const tabela=document.getElementById('fxCenas');
   if(!tabela)return;
@@ -2760,53 +2728,6 @@ function apagarSelecionadas(){
                                         : campo.selectionStart===campo.value.length;
     if(!naPonta)return;
     if(irParaCampo(e.key==='ArrowRight'?1:-1,campo))e.preventDefault();
-  });
-  const indiceDe=function(alvo){
-    const tr=alvo.closest && alvo.closest('tr[data-indice]');
-    return tr?linhasDasCenas().indexOf(tr):-1;
-  };
-  tabela.addEventListener('mousedown',function(e){
-    if(e.button!==0)return;                       /* so o botao esquerdo */
-    const i=indiceDe(e.target);
-    if(i<0)return;
-    const cel=e.target.closest && e.target.closest('td');
-    const emCampo=e.target.tagName==='INPUT';
-    if(!emCampo && cel && !cel.classList.contains('diaria')){
-      e.preventDefault();                         /* fora de campo: marca na hora */
-      selCenas={de:i,ate:i,arrastando:true,pendente:null};
-      pintarSelecao();
-      return;
-    }
-    /* comecou dentro de um campo: so vira selecao de linhas se o mouse sair
-       desta linha, para nao atrapalhar quem quer marcar o texto do campo */
-    if(emCampo)selCenas.pendente=i;
-  });
-  tabela.addEventListener('mouseover',function(e){
-    const i=indiceDe(e.target);
-    if(i<0)return;
-    if(!selCenas.arrastando){
-      if(selCenas.pendente===null || !(e.buttons&1) || i===selCenas.pendente)return;
-      selCenas={de:selCenas.pendente,ate:i,arrastando:true,pendente:null};
-      pintarSelecao();
-      return;
-    }
-    if(i===selCenas.ate)return;
-    selCenas.ate=i;
-    pintarSelecao();
-  });
-  document.addEventListener('mouseup',function(){
-    selCenas.arrastando=false; selCenas.pendente=null;
-  });
-  document.addEventListener('keydown',function(e){
-    if(e.key==='Escape'){ limparSelecao(); return; }
-    if(e.key!=='Delete' && e.key!=='Backspace')return;
-    if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;   /* digitando */
-    if(apagarSelecionadas())e.preventDefault();
-  });
-  document.addEventListener('mousedown',function(e){
-    if(!faixaSelecionada())return;
-    const dentro=e.target.closest && e.target.closest('#fxCenas');
-    if(!dentro)limparSelecao();
   });
 })();
 
