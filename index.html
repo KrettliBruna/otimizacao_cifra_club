@@ -179,8 +179,6 @@
   .fx-modo-padrao .fx-so-padrao{display:block;}
   .fx-modo-diarias .fx-so-diarias{display:block;}
   .fx-modo-micro .fx-so-micro{display:block;}
-  th.fx-so-diarias,td.fx-so-diarias{display:none;}
-  .fx-modo-diarias th.fx-so-diarias,.fx-modo-diarias td.fx-so-diarias{display:table-cell;}
   .fx-dias{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:10px;}
   .fx-dia{border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--paper);}
   .fx-dia .num{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-weight:700;margin-bottom:5px;}
@@ -391,7 +389,6 @@
            acaba em 50% da largura. O Chrome ignora calc() em largura de
            coluna, entao vai em porcentagem.                              -->
       <th style="width:27.4%">Take(s)</th>
-      <th class="fx-so-diarias" style="width:118px">Data de gravação</th>
       <th id="fxColObs">Observações</th>
     </tr></thead><tbody id="fxCenas"></tbody></table>
   </div>
@@ -2291,7 +2288,25 @@ function formatarData(bruto){
 }
 function chaveCena(sc,i){ return (sc.secao||'-')+'|'+sc.label+'|'+i; }
 
+/* A coluna "Data de gravacao" so existe no fluxo de varias diarias. Ela e
+   inserida e removida de verdade, em vez de escondida com display:none: numa
+   tabela de layout fixo o Chrome continua reservando a largura da coluna
+   escondida, e sobrava um vao sem celula no fim da linha.                  */
+function temColunaData(){ return FLUXO.modelo==='diarias'; }
+function colunasDaTabela(){ return temColunaData()?6:5; }
+function ajustarColunaData(){
+  const cab=document.querySelector('#fxBlocoCenas thead tr');
+  if(!cab)return;
+  const atual=document.getElementById('fxColData');
+  if(temColunaData()){
+    if(atual)return;
+    const th=document.createElement('th');
+    th.id='fxColData'; th.style.width='118px'; th.textContent='Data de grava\u00e7\u00e3o';
+    cab.insertBefore(th,document.getElementById('fxColObs'));
+  }else if(atual)atual.remove();
+}
 function renderFluxoCenas(){
+  ajustarColunaData();
   const tb=document.getElementById('fxCenas');
   if(!tb)return;
   tb.innerHTML='';
@@ -2308,14 +2323,14 @@ function renderFluxoCenas(){
       if(secAnterior!==null){
         const dv=document.createElement('tr');
         dv.className='divisor';
-        dv.innerHTML='<td colspan="6">'+escapeHtml(sc.secao)+'</td>';
+        dv.innerHTML='<td colspan="'+colunasDaTabela()+'">'+escapeHtml(sc.secao)+'</td>';
         tb.appendChild(dv);
       }
       tipoAnterior=null;
     } else if(tipoAnterior!==null && sc.type!==tipoAnterior){
       const vz=document.createElement('tr');       /* linha de espaco entre LOC e TAB, etc */
       vz.className='espaco';
-      vz.innerHTML='<td></td><td></td><td></td><td></td><td class="fx-so-diarias"></td><td></td>';
+      vz.innerHTML=new Array(colunasDaTabela()+1).join('<td></td>');
       tb.appendChild(vz);
     }
     secAnterior=sc.secao; tipoAnterior=sc.type;
@@ -2329,12 +2344,12 @@ function renderFluxoCenas(){
       +'<td class="cena">'+escapeHtml(sc.label)+'</td>'
       +'<td><input type="text" class="fx-cam" inputmode="numeric" maxlength="3" value="'+escapeHtml(d.cam||'')+'"></td>'
       +'<td><input type="text" value="'+escapeHtml(d.takes||'')+'"></td>'
-      +'<td class="fx-so-diarias"><input type="text" class="fx-datacena" placeholder="__/__/____" value="'+escapeHtml(d.dataGrav||'')+'"></td>'
+      +(temColunaData()?'<td><input type="text" class="fx-datacena" placeholder="__/__/____" value="'+escapeHtml(d.dataGrav||'')+'"></td>':'')
       +'<td><input type="text" value="'+escapeHtml(d.obs||'')+'"></td>';
     const tdD=tr.querySelector('.diaria');
     tdD.onclick=function(){ aplicarDiaria(i,(d.diaria||1)%3+1); };
     const ins=tr.querySelectorAll('input');
-    ['cam','takes','dataGrav','obs'].forEach(function(campo,j){
+    (temColunaData()?['cam','takes','dataGrav','obs']:['cam','takes','obs']).forEach(function(campo,j){
       ins[j].addEventListener('input',function(){
         d[campo]=ins[j].value;
         /* cam e data de gravacao seguem a mesma regra: digitar na primeira linha
@@ -2345,13 +2360,15 @@ function renderFluxoCenas(){
       });
     });
     const dtCena=tr.querySelector('.fx-datacena');
-    dtCena.addEventListener('blur',function(){
-      const f=formatarData(dtCena.value);
-      if(f!==dtCena.value){ dtCena.value=f; d.dataGrav=f; }
-      if(primeiraDoGrupo(i))espalharDataCena(i);
-      salvarFluxoLocal();
-    });
-    dtCena.addEventListener('keydown',function(e){ if(e.key==='Enter')dtCena.blur(); });
+    if(dtCena){
+      dtCena.addEventListener('blur',function(){
+        const f=formatarData(dtCena.value);
+        if(f!==dtCena.value){ dtCena.value=f; d.dataGrav=f; }
+        if(primeiraDoGrupo(i))espalharDataCena(i);
+        salvarFluxoLocal();
+      });
+      dtCena.addEventListener('keydown',function(e){ if(e.key==='Enter')dtCena.blur(); });
+    }
     tr.dataset.indice=String(i);
     tb.appendChild(tr);
   });
@@ -2409,7 +2426,8 @@ function espalharDataCena(indice){
     if(!FLUXO.cenas[k])FLUXO.cenas[k]={cam:'',takes:'',obs:'',dataGrav:'',diaria:1};
     FLUXO.cenas[k].dataGrav=valor;
     const linha=document.querySelector('#fxCenas tr[data-indice="'+j+'"]');
-    if(linha)linha.querySelector('input.fx-datacena').value=valor;
+    const campo=linha&&linha.querySelector('input.fx-datacena');
+    if(campo)campo.value=valor;
   }
 }
 function renderArquivos(){
