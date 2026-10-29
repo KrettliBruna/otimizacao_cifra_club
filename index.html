@@ -141,7 +141,14 @@
      as bordas nao podem colapsar — cada celula desenha so a direita e a de
      baixo, e a moldura fica na propria tabela.                            */
   table.fx{width:100%;border-collapse:separate;border-spacing:0;margin-top:6px;table-layout:fixed;
-    border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--panel);}
+    border:1px solid var(--line);border-radius:9px;background:var(--panel);}
+  /* sem overflow:hidden de proposito: a camada de recorte que ele cria fazia o
+     Chrome perder pedacos das linhas na fronteira de 768px. Os cantos sao
+     arredondados nas proprias celulas das pontas.                          */
+  table.fx thead th:first-child{border-top-left-radius:8px;}
+  table.fx thead th:last-child{border-top-right-radius:8px;}
+  table.fx tr:last-child td:first-child{border-bottom-left-radius:8px;}
+  table.fx tr:last-child td:last-child{border-bottom-right-radius:8px;}
   table.fx th{background:var(--panel);border-right:1px solid var(--line);border-bottom:1px solid var(--line);
     padding:7px 8px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);}
   table.fx td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:0;background:var(--panel);}
@@ -221,7 +228,7 @@
   /* dentro da tabela o campo fica transparente: fundo branco por cima
      comia as linhas que dividem as colunas */
   table.fx td input{background:transparent!important;}
-  table.fx{border-collapse:separate!important;border-spacing:0!important;border:1px solid #000!important;border-radius:9px;overflow:hidden;}
+  table.fx{border-collapse:separate!important;border-spacing:0!important;border:1px solid #000!important;border-radius:9px;}
   table.fx td,table.fx th{border:none;border-right:1px solid #000;border-bottom:1px solid #000;background:#fff;color:#000;}
   table.fx th:last-child,table.fx td:last-child{border-right:none;}
   table.fx tr:last-child td{border-bottom:none;}
