@@ -33,10 +33,16 @@
   body,header,.howto,.markbar,textarea.paste,.btn,.mini,.mark,.chip,.tab,.status,.preview{transition:background-color .18s ease,color .18s ease,border-color .18s ease;}
   *{box-sizing:border-box;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;line-height:1.5;}
-  header{padding:24px 30px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:18px;}
+  /* Quando o site e aberto pelo icone na tela de inicio do iPhone/iPad, a
+     pagina comeca embaixo da barra de status do sistema. O env(safe-area-*)
+     desce o cabecalho o tanto que aquele aparelho precisa — zero no
+     computador. Sem isso o cabecalho sai cortado e embacado. */
+  header{padding:calc(env(safe-area-inset-top,0px) + 14px)
+                 calc(env(safe-area-inset-right,0px) + 30px) 14px
+                 calc(env(safe-area-inset-left,0px) + 30px);
+    border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:18px;}
+  .logo{height:26px;width:auto;display:block;flex-shrink:0;}
   .theme-toggle{flex-shrink:0;white-space:nowrap;}
-  header h1{margin:0;font-size:1.4rem;letter-spacing:-0.02em;font-weight:700;}
-  header .sub{color:var(--muted);font-size:0.88rem;margin-top:4px;}
   .wrap{padding:22px 30px 60px;max-width:1080px;margin:0 auto;}
   .howto{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:9px;padding:14px 18px;margin-bottom:18px;font-size:0.88rem;}
   .howto b{color:var(--amber);}
@@ -73,6 +79,10 @@
   .btn:hover{background:var(--amber-hover);}
   .btn.ghost{background:transparent;color:var(--amber);border:1px solid var(--amber);}
   .btn.ghost:hover{background:var(--amber-soft);}
+  /* botao que e, por dentro, o proprio campo de arquivo (ver o Abrir fluxo) */
+  /* campo de arquivo fora da vista, mas desenhado: no iPhone e no iPad o
+     Safari nao abre o seletor de um campo com display:none */
+  .arquivo-fora{position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;}
   .controls{display:flex;gap:11px;margin-top:14px;flex-wrap:wrap;align-items:center;}
   .status{border-radius:9px;padding:12px 16px;font-size:0.87rem;margin:16px 0;}
   .status.ok{background:var(--ok-bg);border:1px solid var(--ok-bd);color:var(--ok-fg);}
@@ -289,10 +299,8 @@
 </head>
 <body>
 <header>
-  <div>
-    <h1>Pré e Pós-produção · Cifra Club</h1>
-    <div class="sub">Roteiro e arquivo do Teleprompter, conversão do XML e organização da pasta da aula.</div>
-  </div>
+  <!-- a logo vai embutida no proprio arquivo: nada e baixado de fora -->
+  <img class="logo" id="logoCc" alt="Cifra Club" src="data:image/png;base64,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">
   <button class="mini theme-toggle" id="btnTema" onclick="alternarTema()">🌙 Escuro</button>
 </header>
 
@@ -466,10 +474,11 @@
     <button class="btn ghost" id="btnPassar" onclick="abrirPassagem()">Continuar em outro aparelho</button>
     <button class="btn ghost" id="btnRefazer" onclick="refazerDoRoteiro()">Refazer do roteiro</button>
     <button class="btn ghost" id="btnAbrirFluxo" onclick="document.getElementById('fxArquivoFluxo').click()">Abrir fluxo…</button>
-    <!-- sem accept de proposito: o iPhone e o iPad deixam cinza toda extensao
-         que o sistema nao conhece, e .fluxo e uma delas. Sem filtro, o arquivo
-         aparece normal; se vier o arquivo errado, abrirArquivoFluxo avisa. -->
-    <input type="file" id="fxArquivoFluxo" style="display:none">
+    <!-- fora da vista em vez de display:none: no iPhone e no iPad o Safari nao
+         abre o seletor de um campo escondido.
+         E sem accept de proposito: o iOS deixa cinza toda extensao que nao
+         conhece, e .fluxo e uma delas. Se vier o arquivo errado, avisa. -->
+    <input type="file" id="fxArquivoFluxo" class="arquivo-fora">
     <button class="mini" id="btnTrocarPasta" onclick="salvarTudo(true)">Trocar pasta</button>
     <span class="folder-name" id="fxPastaNome"></span>
     <span class="copied" id="fxSalvoOk" style="display:none">✓ salvo</span>
@@ -4070,6 +4079,28 @@ async function importarAudioExport(raiz,silencioso,jaNaFila){
   return jaNaFila ? corpo() : enfileirar(corpo);
 }
 /* ================= zonas de arrastar ================= */
+/* Abre o seletor de arquivos do aparelho.
+   No iPhone e no iPad o Safari so abre o seletor se o campo estiver mesmo na
+   pagina — um campo solto, criado so na memoria, nao abre nada. Por isso o
+   campo entra na pagina (invisivel), e sai depois.                          */
+function pedirArquivos(opts,aoEscolher){
+  opts=opts||{};
+  const inp=document.createElement('input');
+  inp.type='file';
+  if(opts.varios)inp.multiple=true;
+  if(opts.aceita)inp.accept=opts.aceita;
+  inp.style.cssText='position:fixed;left:-9999px;top:0;opacity:0;';
+  document.body.appendChild(inp);
+  const sair=function(){ if(inp.parentNode)inp.parentNode.removeChild(inp); };
+  inp.addEventListener('change',function(e){
+    const arqs=Array.from(e.target.files||[]);
+    sair();
+    if(arqs.length)aoEscolher(arqs);
+  });
+  /* se a pessoa cancelar, o campo fica sobrando: tira na proxima volta a pagina */
+  window.addEventListener('focus',function uma(){ window.removeEventListener('focus',uma); setTimeout(sair,1000); });
+  inp.click();
+}
 function ligarZona(idZona,destino,rotulo,opts){
   opts=opts||{};
   const dz=document.getElementById(idZona);
@@ -4089,11 +4120,9 @@ function ligarZona(idZona,destino,rotulo,opts){
   });
   dz.addEventListener('click',ev=>{
     if(ev.target.closest('.zbtn'))return;
-    const inp=document.createElement('input');
-    inp.type='file'; inp.multiple=true;
-    if(opts.aceita)inp.accept=opts.aceita;
-    inp.onchange=e=>{ if(e.target.files.length)processarArquivos(null,Array.from(e.target.files),destino,rotulo,opts); };
-    inp.click();
+    pedirArquivos({varios:true,aceita:opts.aceita},function(arqs){
+      processarArquivos(null,arqs,destino,rotulo,opts);
+    });
   });
 }
 async function escolherOrigemPasta(destino,rotulo,opts){
@@ -4918,10 +4947,7 @@ function ligarZonaPdf(){
     if(e.dataTransfer.files.length)receberPdf(e.dataTransfer.files[0]);
   });
   dz.addEventListener('click',function(){
-    const inp=document.createElement('input');
-    inp.type='file'; inp.accept='.pdf';
-    inp.onchange=function(e){ if(e.target.files.length)receberPdf(e.target.files[0]); };
-    inp.click();
+    pedirArquivos({aceita:'.pdf'},function(arqs){ receberPdf(arqs[0]); });
   });
 }
 
