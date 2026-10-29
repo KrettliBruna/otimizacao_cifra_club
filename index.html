@@ -466,7 +466,10 @@
     <button class="btn ghost" id="btnPassar" onclick="abrirPassagem()">Continuar em outro aparelho</button>
     <button class="btn ghost" id="btnRefazer" onclick="refazerDoRoteiro()">Refazer do roteiro</button>
     <button class="btn ghost" id="btnAbrirFluxo" onclick="document.getElementById('fxArquivoFluxo').click()">Abrir fluxo…</button>
-    <input type="file" id="fxArquivoFluxo" accept=".fluxo,.json,application/json" style="display:none">
+    <!-- sem accept de proposito: o iPhone e o iPad deixam cinza toda extensao
+         que o sistema nao conhece, e .fluxo e uma delas. Sem filtro, o arquivo
+         aparece normal; se vier o arquivo errado, abrirArquivoFluxo avisa. -->
+    <input type="file" id="fxArquivoFluxo" style="display:none">
     <button class="mini" id="btnTrocarPasta" onclick="salvarTudo(true)">Trocar pasta</button>
     <span class="folder-name" id="fxPastaNome"></span>
     <span class="copied" id="fxSalvoOk" style="display:none">✓ salvo</span>
@@ -4620,9 +4623,14 @@ async function lerFluxoDoLink(){
 async function abrirArquivoFluxo(arq){
   if(!arq)return;
   try{
-    aplicarPacote(JSON.parse(await arq.text()));
+    const pacote=JSON.parse(await arq.text());
+    if(!pacote || typeof pacote!=='object')throw new Error('conteúdo inesperado');
+    aplicarPacote(pacote);
     flash('fxSalvoOk');
-  }catch(e){ alert('Não deu para abrir este arquivo: '+(e&&e.message?e.message:e)); }
+  }catch(e){
+    alert('Este arquivo não é um fluxo salvo. Escolha o arquivo da pasta "fluxos", '+
+          'com o nome da aula e terminado em .fluxo.');
+  }
 }
 
 /* os dois arquivos saem com o mesmo nome base: <aula>.pdf e <aula>_fluxo.json */
