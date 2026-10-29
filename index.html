@@ -173,6 +173,8 @@
   .fx-outro{display:block;}
   .fx-outro .fx-grupo{display:block;margin-bottom:5px;}
   @media(max-width:760px){.fx-cab{grid-template-columns:1fr 1fr;}}
+  .fx-qr{display:inline-block;background:#fff;padding:12px;border:1px solid var(--line);border-radius:10px;margin:10px 0;}
+  .fx-qr svg{display:block;width:230px;height:230px;}
   .chk{display:flex;align-items:center;gap:8px;font-size:0.86rem;color:var(--muted);margin-top:4px;cursor:pointer;}
 </style>
 <!-- As regras de impressao moram aqui para serem reaproveitadas pelo gerador de PDF:
@@ -202,6 +204,11 @@
     -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
   .fx-bloco{border:1px solid #000;background:#fff;}
   .fx-obs{min-height:230px;background:#fff;border:1px solid #000;}
+  .nao-no-pdf{display:none!important;}
+  /* nenhum bloco rachado entre duas folhas, nem pelo Ctrl+P do navegador */
+  .fx-bloco,.fx-dupla,.fx-cab,.fx-dia,#fxBlocoCenas .step-label{break-inside:avoid;page-break-inside:avoid;}
+  table.fx tr{break-inside:avoid;page-break-inside:avoid;}
+  table.fx thead{display:table-header-group;}
   /* o gerador de PDF troca cada campo por um texto fixo com a classe pdf-campo;
      as regras abaixo dao a ele o mesmo tamanho que o campo tinha */
   .pdf-campo{color:#000!important;background:#fff!important;white-space:pre-wrap;word-break:break-word;}
@@ -390,9 +397,22 @@
 
   <div class="controls">
     <button class="btn" id="btnSalvarPdf" onclick="salvarPdfFluxo()">Salvar PDF</button>
-    <button class="btn ghost" onclick="salvarFluxoNaPasta()">Salvar na pasta…</button>
+    <button class="btn ghost" id="btnPassar" onclick="abrirPassagem()">Continuar em outro aparelho</button>
+    <button class="btn ghost" id="btnSalvarFluxo" onclick="salvarFluxoNaPasta()">Salvar fluxo…</button>
+    <button class="btn ghost" id="btnAbrirFluxo" onclick="document.getElementById('fxArquivoFluxo').click()">Abrir fluxo…</button>
+    <input type="file" id="fxArquivoFluxo" accept=".fluxo,.json,application/json" style="display:none">
     <span class="folder-name" id="fxPastaNome">nenhuma pasta escolhida</span>
     <span class="copied" id="fxSalvoOk" style="display:none">✓ salvo</span>
+  </div>
+  <div class="nao-no-pdf" id="fxPassagem" style="display:none">
+    <div class="step-label" style="margin-top:14px">Continuar em outro aparelho</div>
+    <div class="hint" id="fxPassagemAviso" style="margin-top:0"></div>
+    <div id="fxQr" class="fx-qr"></div>
+    <div class="controls">
+      <button class="mini" onclick="copiarLinkFluxo()">Copiar link</button>
+      <span class="copied" id="fxLinkOk" style="display:none">✓ copiado</span>
+      <button class="mini" onclick="fecharPassagem()">Fechar</button>
+    </div>
   </div>
   <div class="hint">O preenchimento fica guardado no navegador por aula — fechou e abriu, continua de onde parou.</div>
 
@@ -1349,6 +1369,7 @@ function blocosDoFluxo(){
     if(el.classList.contains('fx-modelos'))return false;         /* nao sai no PDF */
     if(el.classList.contains('controls'))return false;
     if(el.classList.contains('hint'))return false;
+    if(el.classList.contains('nao-no-pdf'))return false;
     return window.getComputedStyle(el).display!=='none';
   });
 }
@@ -1495,6 +1516,186 @@ async function salvarPdfFluxo(){
     gerandoPdf=false; if(btn)btn.disabled=false;
   }
 }
+/* ============ levar o fluxo de um aparelho para o outro ============
+   Dois caminhos, nos dois sentidos: um link (com QR, pra ler com a camera)
+   e um arquivo .fluxo, que pode morar no iCloud.                        */
+const LIB_QR='https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js';
+const QR_LIMITE=2200;        /* acima disso o QR fica denso demais pra camera */
+
+/* Tudo que a aba Fluxo precisa para se remontar no outro aparelho, no menor
+   tamanho possivel: o que esta vazio nao viaja, e o preenchimento das cenas
+   vai como lista alinhada com as cenas, sem repetir as chaves compridas. */
+const CENA_CAMPOS=['cam','takes','obs','dataGrav'];
+function vazio(v){
+  if(v===''||v===null||v===undefined)return true;
+  if(Array.isArray(v))return v.length===0;
+  if(typeof v==='object')return Object.keys(v).length===0;
+  return false;
+}
+function semVazios(o){
+  const r={};
+  Object.keys(o).forEach(function(k){ if(!vazio(o[k]))r[k]=o[k]; });
+  return r;
+}
+function pacoteFluxo(){
+  const campo=document.getElementById('nomeAula');
+  const cenas=STATE.flux||[];
+  const resto=semVazios(Object.assign({},FLUXO,{cenas:undefined,dias:undefined}));
+  delete resto.cenas; delete resto.dias;
+  const dias=(FLUXO.dias||[]).map(function(d){
+    const s=semVazios({data:d.data,obs:d.obs,produtora:d.produtora,arquivos:semVazios(d.arquivos||{})});
+    return Object.keys(s).length?s:0;                 /* 0 = diaria em branco */
+  });
+  while(dias.length && dias[dias.length-1]===0)dias.pop();
+  return {v:2,
+    n:campo?campo.value:'',
+    s:cenas.map(function(c){ return [c.type,c.num===null||c.num===undefined?'':c.num,c.label,c.secao||'']; }),
+    c:cenas.map(function(c,i){
+      const d=FLUXO.cenas[chaveCena(c,i)]||{};
+      const linha=CENA_CAMPOS.map(function(k){ return d[k]||''; });
+      linha.push(d.diaria||1);
+      return linha.join('')===''+1 ? 0 : linha;       /* 0 = cena em branco */
+    }),
+    d:dias,
+    f:resto};
+}
+function aplicarPacote(p){
+  if(!p || typeof p!=='object' || Array.isArray(p))throw new Error('arquivo não reconhecido');
+  let dados=null, cenas=null, nome;
+  if(p.v===2){
+    cenas=(p.s||[]).map(function(a){
+      return {type:a[0],num:a[1]===''?null:a[1],label:a[2],secao:a[3]||''};
+    });
+    dados=Object.assign({},p.f||{});
+    dados.cenas={};
+    cenas.forEach(function(c,i){
+      const a=(p.c||[])[i];
+      if(!a)return;
+      const o={diaria:a[CENA_CAMPOS.length]||1};
+      CENA_CAMPOS.forEach(function(k,j){ o[k]=a[j]||''; });
+      dados.cenas[chaveCena(c,i)]=o;
+    });
+    dados.dias=(p.d||[]).map(function(x){
+      return x?Object.assign({data:'',obs:'',produtora:[],arquivos:{}},x)
+              :{data:'',obs:'',produtora:[],arquivos:{}};
+    });
+    nome=p.n;
+  }else{
+    /* formatos anteriores: o pacote com FLUXO dentro, ou so o FLUXO */
+    dados=p.FLUXO || ((p.cenas!==undefined||p.titulo!==undefined)?p:null);
+    if(Array.isArray(p.flux))cenas=p.flux;
+    nome=p.nomeAula;
+  }
+  if(!dados)throw new Error('arquivo não reconhecido');
+  if(Array.isArray(cenas))STATE={ordered:[],flux:cenas,todas:[],secoes:[]};
+  const campo=document.getElementById('nomeAula');
+  if(campo && nome!==undefined){ campo.value=nome||''; atualizarNomePreview(); }
+  FLUXO=Object.assign(fluxoVazio(dados.modelo||'padrao'),dados);
+  normalizarFluxo();
+  chaveAtualFluxo=chaveFluxo();
+  salvarFluxoLocal();
+  repintarFluxo();
+  switchMain('fluxo');
+}
+
+function paraBase64(bytes){
+  let s=''; for(const b of bytes)s+=String.fromCharCode(b);
+  return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function deBase64(txt){
+  const s=atob(txt.replace(/-/g,'+').replace(/_/g,'/'));
+  const b=new Uint8Array(s.length);
+  for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i);
+  return b;
+}
+async function empacotarTexto(txt){
+  const bytes=new TextEncoder().encode(txt);
+  if(!window.CompressionStream)return 'p'+paraBase64(bytes);
+  try{
+    const cs=new CompressionStream('deflate-raw');
+    const esc=cs.writable.getWriter(); esc.write(bytes); esc.close();
+    const z=new Uint8Array(await new Response(cs.readable).arrayBuffer());
+    return 'z'+paraBase64(z);
+  }catch(e){ return 'p'+paraBase64(bytes); }
+}
+async function desempacotarTexto(cod){
+  const corpo=deBase64(cod.slice(1));
+  if(cod[0]!=='z')return new TextDecoder().decode(corpo);
+  const ds=new DecompressionStream('deflate-raw');
+  const esc=ds.writable.getWriter(); esc.write(corpo); esc.close();
+  return new TextDecoder().decode(await new Response(ds.readable).arrayBuffer());
+}
+async function linkDoFluxo(){
+  const cod=await empacotarTexto(JSON.stringify(pacoteFluxo()));
+  return location.origin+location.pathname+'#f='+cod;
+}
+
+let ultimoLink='';
+async function abrirPassagem(){
+  const caixa=document.getElementById('fxPassagem');
+  const aviso=document.getElementById('fxPassagemAviso');
+  const alvo=document.getElementById('fxQr');
+  if(!caixa)return;
+  caixa.style.display='block';
+  alvo.innerHTML=''; aviso.textContent='Preparando…';
+  try{
+    ultimoLink=await linkDoFluxo();
+    if(ultimoLink.length>QR_LIMITE){
+      aviso.textContent='Este fluxo ficou grande demais para o QR ('+ultimoLink.length
+        +' caracteres). Use "Copiar link" e mande para você mesma, ou "Salvar fluxo…" e abra o arquivo no outro aparelho.';
+      return;
+    }
+    if(!window.qrcode)await carregarScript(LIB_QR);
+    if(!window.qrcode)throw new Error('não deu para baixar o gerador de QR');
+    const qr=window.qrcode(0,'L');
+    qr.addData(ultimoLink);
+    qr.make();
+    alvo.innerHTML=qr.createSvgTag(5,0);
+    aviso.textContent='Aponte a câmera do iPad ou do celular para o código: o site abre já com este fluxo preenchido.';
+  }catch(e){
+    aviso.textContent='Não deu para montar o QR ('+(e&&e.message?e.message:e)
+      +'). Use "Copiar link" ou "Salvar fluxo…".';
+  }
+}
+function fecharPassagem(){
+  const caixa=document.getElementById('fxPassagem');
+  if(caixa)caixa.style.display='none';
+}
+async function copiarLinkFluxo(){
+  try{
+    const link=ultimoLink||await linkDoFluxo();
+    ultimoLink=link;
+    if(navigator.clipboard && navigator.clipboard.writeText)await navigator.clipboard.writeText(link);
+    else{
+      const t=document.createElement('textarea');
+      t.value=link; document.body.appendChild(t); t.select();
+      document.execCommand('copy'); t.remove();
+    }
+    flash('fxLinkOk');
+  }catch(e){ alert('Não consegui copiar o link: '+(e&&e.message?e.message:e)); }
+}
+/* o link traz o fluxo no proprio endereco, depois do # */
+async function lerFluxoDoLink(){
+  const h=location.hash||'';
+  if(h.indexOf('#f=')!==0)return false;
+  try{
+    const p=JSON.parse(await desempacotarTexto(h.slice(3)));
+    aplicarPacote(p);
+    history.replaceState(null,'',location.pathname);   /* limpa o endereco */
+    return true;
+  }catch(e){
+    alert('O link veio com o fluxo danificado e não deu para abrir.');
+    return false;
+  }
+}
+async function abrirArquivoFluxo(arq){
+  if(!arq)return;
+  try{
+    aplicarPacote(JSON.parse(await arq.text()));
+    flash('fxSalvoOk');
+  }catch(e){ alert('Não deu para abrir este arquivo: '+(e&&e.message?e.message:e)); }
+}
+
 function nomeDoPdf(){
   const campo=document.getElementById('nomeAula');
   const nome=(FLUXO.titulo||(campo?campo.value:'')||'').trim();
@@ -2160,7 +2361,21 @@ function aplicarInstrumentoPadrao(){
   salvarFluxoLocal();
 }
 async function salvarFluxoNaPasta(){
-  if(!TEM_FS){ alert('Este recurso precisa do Chrome ou Edge, com a página aberta pelo link do site.'); return; }
+  const nomeArq=(function(){
+    const n=document.getElementById('nomeAula').value.trim();
+    return (n?slugifyAula(n):'fluxo')+'_fluxo.json';
+  })();
+  const conteudo=JSON.stringify(pacoteFluxo(),null,2);
+  /* no iPad e no iPhone nao da para escolher pasta: baixa o arquivo,
+     que a pessoa guarda nos Arquivos (iCloud) e abre no outro aparelho */
+  if(!TEM_FS){
+    const url=URL.createObjectURL(new Blob([conteudo],{type:'application/json'}));
+    const a=document.createElement('a');
+    a.href=url; a.download=nomeArq; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},2000);
+    flash('fxSalvoOk');
+    return;
+  }
   try{
     if(!pastaFluxo || !(await temPermissao(pastaFluxo,true))){
       pastaFluxo=await window.showDirectoryPicker({mode:'readwrite',id:'pastaFluxo'});
@@ -2168,9 +2383,7 @@ async function salvarFluxoNaPasta(){
       const el=document.getElementById('fxPastaNome');
       el.textContent=pastaFluxo.name; el.classList.add('ativa');
     }
-    const nome=document.getElementById('nomeAula').value.trim();
-    const arq=(nome?slugifyAula(nome):'fluxo')+'_fluxo.json';
-    await gravar(pastaFluxo,arq,new Blob([JSON.stringify(FLUXO,null,2)],{type:'application/json'}));
+    await gravar(pastaFluxo,nomeArq,new Blob([conteudo],{type:'application/json'}));
     flash('fxSalvoOk');
   }catch(e){ if(e.name!=='AbortError')alert('Não consegui salvar: '+e.message); }
 }
@@ -2207,7 +2420,8 @@ function normalizarDias(){
     const ult=FLUXO.dias[FLUXO.dias.length-1];
     FLUXO.dias.push({data:'',obs:'',produtora:[],arquivos:Object.assign({},(ult&&ult.arquivos)||{})});
   }
-  FLUXO.dias.forEach(function(d){
+  FLUXO.dias.forEach(function(d,i){
+    if(!d || typeof d!=='object'){ d=FLUXO.dias[i]={data:'',obs:'',produtora:[],arquivos:{}}; }
     if(!Array.isArray(d.produtora))d.produtora = d.produtora ? [d.produtora] : [];
     if(typeof d.data!=='string')d.data='';
     if(typeof d.obs!=='string')d.obs='';
@@ -2300,6 +2514,17 @@ function renderDias(){
 }
 
 montarAbaFluxo();   /* por ultimo: depende das constantes definidas acima */
+
+/* abrir fluxo a partir de um arquivo, e a partir de um link com QR */
+(function(){
+  const inp=document.getElementById('fxArquivoFluxo');
+  if(inp)inp.addEventListener('change',function(){
+    const a=inp.files && inp.files[0];
+    inp.value='';                      /* deixa reabrir o mesmo arquivo depois */
+    abrirArquivoFluxo(a);
+  });
+  lerFluxoDoLink();
+})();
 </script>
 </body>
 </html>
