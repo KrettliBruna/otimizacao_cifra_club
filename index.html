@@ -157,11 +157,16 @@
   /* cada linha com altura de duas linhas de texto: sobra espaco pra escrever a mao */
   table.fx td input{width:100%;border:none;background:transparent;color:var(--ink);padding:16px 8px;font-size:0.86rem;font-family:inherit;}
   table.fx td input:focus{outline:2px solid var(--amber);outline-offset:-2px;}
+  /* campos cobertos pelo arrasto, prontos para o Delete */
+  table.fx td input.marcado{background:var(--amber-soft)!important;}
   table.fx td.cena{font-family:'Courier New',monospace;font-weight:700;text-align:center;padding:16px 10px;white-space:nowrap;}
   /* faixa de destaque separando um roteiro do outro */
   table.fx tr.divisor td{background:var(--amber-soft);border:none;padding:11px 2px;text-align:center;
     font-size:0.78rem;letter-spacing:0.22em;color:var(--amber);font-weight:700;}
-  table.fx tr.espaco td{height:14px;background:transparent;border-left:none;border-right:none;border-bottom:none;}
+  /* o vao entre grupos fecha em cima e embaixo; na coluna da diaria nao,
+     senao a linha emenda um bloco de cor no outro */
+  table.fx tr.espaco td{height:14px;background:transparent;border-left:none;border-right:none;}
+  table.fx tr.espaco td:first-child{border-bottom:none;}
   /* a coluna da diaria nao desenha a linha de baixo: ela atravessava o vao
      entre os grupos e emendava um bloco de cor no outro */
   table.fx td.diaria{border-bottom:none;}
@@ -213,9 +218,22 @@
 <!-- As regras de impressao moram aqui para serem reaproveitadas pelo gerador de PDF:
      na hora de montar o PDF a pagina troca media="print" por media="all" na copia. -->
 <style id="estiloPdf" media="print">
+  /* O papel nao tem tema. Aqui as cores voltam todas para um mesmo jogo,
+     venha a tela do modo claro ou do escuro, e as linhas ficam pretas.  */
+  :root,:root[data-theme="dark"],:root[data-theme="light"]{
+    --ink:#000;--paper:#fff;--panel:#fff;--line:#000;--muted:#000;
+    --amber:#c8621f;--amber-soft:#f4e6d8;--on-ink:#fff;--on-amber:#fff;}
   header,.tabs,.mtab,.controls,.hint,.acc,.dropzone,#pdfStatus,.step-label,#status,#counts,#results,.fx-modelos{display:none!important;}
   .main-tab{display:none!important;} .main-tab#main-fluxo{display:block!important;}
-  body{background:#fff;color:#000;} .wrap{padding:0;max-width:100%;}
+  html,body{background:#fff!important;color:#000;} .wrap{padding:0 2px;max-width:100%;}
+  /* o texto de exemplo do campo vazio nao vai pro papel: no PDF montado
+     pela pagina ele ja nao aparece, e os dois tem que sair iguais */
+  ::placeholder{color:transparent!important;opacity:0!important;}
+  /* TODA borda do fluxo sai no mesmo preto, venha do tema claro ou do escuro.
+     So 'border-color': larguras e lados desligados continuam como estao.    */
+  #main-fluxo,#main-fluxo *{border-color:#000!important;}
+  /* na folha a pagina e estreita; sem isto o cabecalho quebraria em 2x2 */
+  .fx-cab{grid-template-columns:repeat(4,1fr)!important;}
   /* o que foi digitado ou escolhido sai em preto, nao no cinza da tela */
   input,select,textarea{color:#000!important;background:#fff!important;}
   /* nome do video, instrutor, estudio e data de gravacao em laranja,
@@ -226,11 +244,16 @@
   .fx-data,.fx-datacena,.pdf-campo.fx-data,.pdf-campo.fx-datacena{font-size:1.02rem!important;}
   /* dentro da tabela o campo fica transparente: fundo branco por cima
      comia as linhas que dividem as colunas */
-  table.fx td input{background:transparent!important;}
+  table.fx td input,table.fx td input.marcado{background:transparent!important;}
   table.fx{border-collapse:separate!important;border-spacing:0!important;border:1px solid #000!important;border-radius:9px;}
   table.fx td,table.fx th{border:none;border-right:1px solid #000;border-bottom:1px solid #000;background:#fff;color:#000;}
   table.fx th:last-child,table.fx td:last-child{border-right:none;}
   table.fx tr:last-child td{border-bottom:none;}
+  /* o vao entre grupos tem fundo transparente: no tema escuro o fundo da
+     tabela aparecia por tras e virava uma barra preta na folha */
+  table.fx{background:#fff!important;}
+  table.fx tr.espaco td{background:#fff!important;border-bottom:1px solid #000;}
+  table.fx tr.espaco td:first-child{border-bottom:none;}
   /* o PDF e colorido: as diarias saem com a cor cheia, como na tela */
   table.fx td.diaria{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;font-weight:700;}
   table.fx tr.d1 td.diaria{background:#fff!important;color:#000!important;}
@@ -1391,6 +1414,9 @@ async function salvarTpNaPasta(trocar){
 const LIB_H2C='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
 const LIB_JSPDF='https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
 const PDF_MARGEM=10, PDF_LARGURA=210, PDF_ALTURA=297, PDF_ESPACO=4;
+/* Largura de layout igual a que o navegador usa ao imprimir: 190mm em 96dpi.
+   Sem isso o PDF montado aqui sairia com a letra menor que o do Ctrl+P.   */
+const PDF_LARGURA_TELA=718;
 const PDF_UTIL_X=PDF_LARGURA-2*PDF_MARGEM, PDF_UTIL_Y=PDF_ALTURA-2*PDF_MARGEM;
 
 let libsPdfCarregando=null;
@@ -1534,7 +1560,7 @@ async function pintarAba(){
   const aba=document.getElementById('main-fluxo');
   const canvas=await window.html2canvas(aba,{
     scale:1.5, backgroundColor:'#ffffff', logging:false, useCORS:true,
-    windowWidth:1080,
+    windowWidth:PDF_LARGURA_TELA,
     onclone:function(doc,clonado){
       const est=doc.getElementById('estiloPdf');
       if(est)est.media='all';                 /* mesma aparencia da impressao */
@@ -1607,7 +1633,11 @@ async function salvarTudo(trocarPasta){
        nem isso: so o PDF, que e o que se usa la.                            */
     if(pasta){
       await gravar(pasta,base+'.pdf',pdf);
-      await gravar(pasta,'.'+base+'.fluxo',dados);
+      /* o arquivo do fluxo vai para uma subpasta: assim a pasta da aula fica
+         so com o PDF, e o ponto no nome nao bastava — o Explorer do Windows
+         mostra arquivo com ponto do mesmo jeito.                           */
+      const guardados=await pasta.getDirectoryHandle('fluxos',{create:true});
+      await gravar(guardados,base+'.fluxo',dados);
       const el=document.getElementById('fxPastaNome');
       if(el){ el.textContent=pasta.name; el.classList.add('ativa'); }
     }else{
@@ -2717,9 +2747,82 @@ function irParaCampo(passo,campo){
   try{ destino.setSelectionRange(n,n); }catch(e){}
   return true;
 }
+/* ===== arrastar o cursor por varios campos para apagar de uma vez =====
+   Cada celula e um campo proprio, entao o navegador nao estende a selecao de
+   texto de um para o outro. Aqui o arrasto marca os campos por onde passou;
+   Delete limpa todos. Dentro de um campo so, a selecao de texto e a do
+   navegador, como sempre.                                                  */
+function camposDaTabela(){
+  return Array.from(document.querySelectorAll('#fxCenas input')).filter(function(c){
+    const td=c.closest('td');
+    return !td || window.getComputedStyle(td).display!=='none';
+  });
+}
+let selCampos={de:null,ate:null,arrastando:false,pendente:null};
+function faixaDeCampos(){
+  if(selCampos.de===null)return null;
+  return [Math.min(selCampos.de,selCampos.ate),Math.max(selCampos.de,selCampos.ate)];
+}
+function pintarCampos(){
+  const f=faixaDeCampos();
+  camposDaTabela().forEach(function(c,i){
+    c.classList.toggle('marcado', !!f && i>=f[0] && i<=f[1]);
+  });
+}
+function limparMarcacao(){ selCampos={de:null,ate:null,arrastando:false,pendente:null}; pintarCampos(); }
+function apagarCamposMarcados(){
+  const f=faixaDeCampos();
+  if(!f || f[0]===f[1])return false;
+  camposDaTabela().forEach(function(c,i){
+    if(i<f[0] || i>f[1])return;
+    c.value='';
+    c.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  limparMarcacao();
+  return true;
+}
 (function(){
   const tabela=document.getElementById('fxCenas');
   if(!tabela)return;
+  const indiceCampo=function(alvo){
+    return alvo && alvo.tagName==='INPUT' ? camposDaTabela().indexOf(alvo) : -1;
+  };
+  tabela.addEventListener('mousedown',function(e){
+    if(e.button!==0)return;
+    limparMarcacao();
+    const i=indiceCampo(e.target);
+    if(i>=0)selCampos.pendente=i;
+  });
+  tabela.addEventListener('mouseover',function(e){
+    if(!(e.buttons&1))return;
+    const i=indiceCampo(e.target);
+    if(i<0)return;
+    if(!selCampos.arrastando){
+      if(selCampos.pendente===null || i===selCampos.pendente)return;
+      selCampos={de:selCampos.pendente,ate:i,arrastando:true,pendente:null};
+    }else{
+      if(i===selCampos.ate)return;
+      selCampos.ate=i;
+    }
+    pintarCampos();
+  });
+  document.addEventListener('mouseup',function(){
+    selCampos.pendente=null;
+    if(!selCampos.arrastando)return;
+    selCampos.arrastando=false;
+    /* tira o foco do campo para o Delete valer para a marcacao inteira */
+    if(document.activeElement && document.activeElement.blur)document.activeElement.blur();
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Escape'){ limparMarcacao(); return; }
+    if(e.key!=='Delete' && e.key!=='Backspace')return;
+    if(e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+    if(apagarCamposMarcados())e.preventDefault();
+  });
+  document.addEventListener('mousedown',function(e){
+    if(!faixaDeCampos())return;
+    if(!(e.target.closest && e.target.closest('#fxCenas')))limparMarcacao();
+  });
   tabela.addEventListener('keydown',function(e){
     if(e.target.tagName!=='INPUT')return;
     if(e.key==='ArrowUp' || e.key==='ArrowDown'){
