@@ -158,9 +158,13 @@
   table.fx td input{width:100%;border:none;background:transparent;color:var(--ink);padding:16px 8px;font-size:0.86rem;font-family:inherit;}
   table.fx td input:focus{outline:2px solid var(--amber);outline-offset:-2px;}
   table.fx td.cena{font-family:'Courier New',monospace;font-weight:700;text-align:center;padding:16px 10px;white-space:nowrap;}
-  table.fx tr.divisor td{background:transparent;border:none;padding:14px 2px 6px;
-    font-size:0.68rem;letter-spacing:0.18em;color:var(--muted);font-weight:700;}
+  /* faixa de destaque separando um roteiro do outro */
+  table.fx tr.divisor td{background:var(--amber-soft);border:none;padding:11px 2px;text-align:center;
+    font-size:0.78rem;letter-spacing:0.22em;color:var(--amber);font-weight:700;}
   table.fx tr.espaco td{height:14px;background:transparent;border-left:none;border-right:none;border-bottom:none;}
+  /* a coluna da diaria nao desenha a linha de baixo: ela atravessava o vao
+     entre os grupos e emendava um bloco de cor no outro */
+  table.fx td.diaria{border-bottom:none;}
   td.diaria{text-align:center;cursor:pointer;user-select:none;width:34px;font-weight:700;font-size:0.78rem;}
   td.diaria{transition:background-color .12s ease;}
   tr.d1 td.diaria{background:var(--ink);color:var(--on-ink);}
@@ -232,7 +236,9 @@
   table.fx tr.d1 td.diaria{background:#fff!important;color:#000!important;}
   table.fx tr.d2 td.diaria{background:#2f6fd0!important;color:#fff!important;}
   table.fx tr.d3 td.diaria{background:#cc2b2b!important;color:#fff!important;}
-  table.fx tr.faixa td{background:#efefef;color:#000;}
+  table.fx tr.divisor td{background:#f4e6d8!important;color:#c8621f!important;text-align:center;
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  table.fx td.diaria{border-bottom:none!important;}
   /* produtora, violao, guitarra e os rotulos saiam em preto, nao no cinza da tela */
   .fx-chip,.fx-grupo,.fx-cab label,.fx-dia .num,.fx-dia .rot{color:#000!important;}
   .fx-chip{background:#fff!important;border:1px solid #000!important;}
