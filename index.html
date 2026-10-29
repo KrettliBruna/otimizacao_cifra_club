@@ -107,6 +107,7 @@
   .folderbar{display:flex;gap:11px;align-items:center;flex-wrap:wrap;margin:16px 0;}
   .folder-name{font-family:'Consolas',monospace;font-size:0.85rem;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:7px 12px;}
   .folder-name.ativa{color:var(--ok);border-color:var(--ok);}
+  .folder-name:empty{display:none;}   /* sem pasta escolhida, nao sobra caixa vazia */
   .zbtn{margin-top:9px;}
   .painel{display:flex;gap:14px;flex-wrap:wrap;margin-top:16px;}
   .card-aula{flex:1 1 300px;min-width:270px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px;}
@@ -126,14 +127,19 @@
   .fx-cab label{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.09em;color:var(--muted);font-weight:700;display:block;margin-bottom:5px;}
   .fx-cab select,.fx-cab input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font-size:0.88rem;background:var(--panel);color:var(--ink);}
   .fx-titulo{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);font-size:1.05rem;font-weight:700;text-align:center;font-family:'Courier New',monospace;}
-  /* o que identifica a gravacao sai em laranja, como os chips escolhidos */
-  #fxTitulo,#fxInstrutor,#fxEstudio,.fx-data,.fx-datacena{color:var(--amber);font-weight:700;}
+  /* o que identifica a gravacao sai em laranja, como os chips escolhidos.
+     Os seletores precisam ser mais especificos que .fx-cab input e
+     table.fx td input, senao a cor padrao do campo vence.               */
+  #fxTitulo,#fxInstrutor,#fxEstudio,
+  .fx-cab input.fx-data,.fx-dia input.fx-data,
+  table.fx td input.fx-datacena{color:var(--amber);font-weight:700;}
   table.fx{width:100%;border-collapse:collapse;margin-top:6px;}
   table.fx th{background:var(--panel);border:1px solid var(--line);padding:7px 8px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);}
   table.fx td{border:1px solid var(--line);padding:0;background:var(--panel);}
-  table.fx td input{width:100%;border:none;background:transparent;color:var(--ink);padding:7px 8px;font-size:0.86rem;font-family:inherit;}
+  /* cada linha com altura de duas linhas de texto: sobra espaco pra escrever a mao */
+  table.fx td input{width:100%;border:none;background:transparent;color:var(--ink);padding:16px 8px;font-size:0.86rem;font-family:inherit;}
   table.fx td input:focus{outline:2px solid var(--amber);outline-offset:-2px;}
-  table.fx td.cena{font-family:'Courier New',monospace;font-weight:700;text-align:center;padding:7px 10px;white-space:nowrap;}
+  table.fx td.cena{font-family:'Courier New',monospace;font-weight:700;text-align:center;padding:16px 10px;white-space:nowrap;}
   table.fx tr.divisor td{background:transparent;border:none;border-top:1px solid var(--muted);padding:14px 2px 6px;
     font-size:0.68rem;letter-spacing:0.18em;color:var(--muted);font-weight:700;}
   table.fx tr.espaco td{height:14px;background:transparent;border-left:none;border-right:none;}
@@ -194,7 +200,8 @@
   input,select,textarea{color:#000!important;background:#fff!important;}
   /* nome do video, instrutor, estudio e data de gravacao em laranja,
      do mesmo jeito que o instrumento e a produtora escolhidos */
-  #fxTitulo,#fxInstrutor,#fxEstudio,.fx-data,.fx-datacena{color:#c8621f!important;font-weight:700;}
+  #fxTitulo,#fxInstrutor,#fxEstudio,.fx-data,.fx-datacena,
+  .pdf-campo.fx-data,.pdf-campo.fx-datacena{color:#c8621f!important;font-weight:700;}
   /* dentro da tabela o campo fica transparente: fundo branco por cima
      comia as linhas que dividem as colunas */
   table.fx td input{background:transparent!important;}
@@ -222,7 +229,7 @@
   /* o gerador de PDF troca cada campo por um texto fixo com a classe pdf-campo;
      as regras abaixo dao a ele o mesmo tamanho que o campo tinha */
   .pdf-campo{color:#000!important;background:#fff!important;white-space:pre-wrap;word-break:break-word;}
-  table.fx td .pdf-campo{padding:7px 8px;font-size:0.86rem;min-height:31px;background:transparent!important;}
+  table.fx td .pdf-campo{padding:16px 8px;font-size:0.86rem;min-height:49px;background:transparent!important;}
   .fx-cab .pdf-campo{width:100%;padding:8px 10px;font-size:0.88rem;border:1px solid #000;border-radius:7px;min-height:35px;}
   .fx-dia .pdf-campo{width:100%;padding:6px 8px;font-size:0.82rem;border:1px solid #000;border-radius:6px;margin-bottom:5px;min-height:28px;}
   .fx-dia .fx-linha .pdf-campo{flex:1 1 auto;min-width:0;margin-bottom:0;}
@@ -620,9 +627,11 @@ function inserirMarcador(tipo){
   const pos = depois==='' ? '\n' : (depois.startsWith('\n') ? '\n' : '\n\n');
   const novo=antes+pre+label+pos+depois;
   const cursor=(antes+pre+label+'\n').length;
+  const rolagem=ta.scrollTop;          /* trocar o texto zera a rolagem */
   setInput(novo);
+  ta.setSelectionRange(cursor,cursor); /* cursor antes do foco: o foco segue o cursor */
   ta.focus();
-  ta.setSelectionRange(cursor,cursor);
+  ta.scrollTop=rolagem;                /* volta para onde ela estava olhando */
   ultimaPos={ini:cursor,fim:cursor};
 }
 /* renumera todas as cenas na ordem em que aparecem no texto */
@@ -1552,14 +1561,16 @@ async function salvarTudo(trocarPasta){
         pastaFluxo=null;              /* pasta recusada pelo navegador: baixa os arquivos */
       }
     }
+    /* a vista fica so com o PDF; o arquivo do fluxo vai junto com um ponto na
+       frente do nome, que o Finder e o Explorer escondem. No celular e no iPad
+       nem isso: so o PDF, que e o que se usa la.                            */
     if(pasta){
       await gravar(pasta,base+'.pdf',pdf);
-      await gravar(pasta,base+'_fluxo.json',dados);
+      await gravar(pasta,'.'+base+'.fluxo',dados);
       const el=document.getElementById('fxPastaNome');
       if(el){ el.textContent=pasta.name; el.classList.add('ativa'); }
     }else{
       baixar(base+'.pdf',pdf);
-      baixar(base+'_fluxo.json',dados);
     }
     diz('Salvar');
     flash('fxSalvoOk');
@@ -2520,6 +2531,21 @@ function ordemOrigemArq(indice,tipo){
   lista.push(indice);
   return lista.length;
 }
+/* as cenas de ensina dividem o mesmo arquivo; a primeira que aparecer no
+   roteiro manda nas outras, e cada uma ainda pode ser trocada a mao */
+const ENSINA=['RITMO','DEDIL','TAB'];
+function espalharEnsina(indice,tipo){
+  if(ENSINA.indexOf(tipo)<0)return;
+  const presentes=tiposDoRoteiro().filter(function(t){ return ENSINA.indexOf(t)>=0; });
+  if(presentes[0]!==tipo)return;                  /* so a primeira delas espalha */
+  const valor=FLUXO.dias[indice].arquivos[tipo]||'';
+  presentes.slice(1).forEach(function(t){
+    FLUXO.dias[indice].arquivos[t]=valor;
+    const campo=document.querySelector('#fxDiasLista .fx-dia[data-dia="'+indice+'"] .fx-arq[data-tipo="'+t+'"]');
+    if(campo)campo.value=valor;
+    espalharArquivoDia(indice,t);                 /* e desce pelas diarias seguintes */
+  });
+}
 function espalharArquivoDia(indice,tipo){
   normalizarDias();
   if(ordemOrigemArq(indice,tipo)>=3)return;       /* da terceira em diante, so esta */
@@ -2584,6 +2610,7 @@ function renderDias(){
       inp.addEventListener('input',function(){
         d.arquivos[inp.dataset.tipo]=inp.value;
         espalharArquivoDia(i,inp.dataset.tipo);   /* renomeia desta diaria em diante */
+        espalharEnsina(i,inp.dataset.tipo);       /* e as outras cenas de ensina */
         salvarFluxoLocal();
       });
     });
