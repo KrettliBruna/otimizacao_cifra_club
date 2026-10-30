@@ -478,12 +478,16 @@
     <button class="btn" id="btnSalvar" onclick="salvarTudo()">Salvar</button>
     <button class="btn ghost" id="btnPassar" onclick="abrirPassagem()">Continuar em outro aparelho</button>
     <button class="btn ghost" id="btnRefazer" onclick="refazerDoRoteiro()">Refazer do roteiro</button>
-    <button class="btn ghost" id="btnAbrirFluxo" onclick="document.getElementById('fxArquivoFluxo').click()">Abrir fluxo…</button>
+    <button class="btn ghost" id="btnAbrirFluxo" onclick="document.getElementById('fxArquivoFluxo').click()">Abrir fluxo do iCloud</button>
     <!-- fora da vista em vez de display:none: no iPhone e no iPad o Safari nao
          abre o seletor de um campo escondido.
-         E sem accept de proposito: o iOS deixa cinza toda extensao que nao
-         conhece. Se vier o arquivo errado, avisa. -->
-    <input type="file" id="fxArquivoFluxo" class="arquivo-fora">
+         O accept so com tipos de documento (nada de imagem ou video) faz o
+         iPhone e o iPad pularem o menu "Fototeca / Tirar foto" e abrirem
+         direto o Arquivos/iCloud. O .fluxo entra na lista pelos arquivos
+         antigos no computador; o iOS ignora essa extensao, que ele nao
+         conhece, e por isso arquivo .fluxo aparece cinza la. -->
+    <input type="file" id="fxArquivoFluxo" class="arquivo-fora"
+           accept=".json,.fluxo,application/json">
     <button class="mini" id="btnTrocarPasta" onclick="salvarTudo(true)">Trocar pasta</button>
     <span class="folder-name" id="fxPastaNome"></span>
     <span class="copied" id="fxSalvoOk" style="display:none">✓ salvo</span>
@@ -5677,7 +5681,9 @@ function apagarCamposMarcados(){
      ai o arrasto morre; por isso existe tambem o toque, que nunca falha.
      Com a faixa marcada, o apagar do teclado da tela limpa tudo de uma vez. */
   const ESPERA_DEDO=350, FOLGA_DEDO=12;
-  let dedo={relogio:null,x:0,y:0,armado:false};
+  const ESPERA_DOIS=450, FOLGA_DOIS=28;   /* dois toques: tempo e folga entre eles */
+  let dedo={relogio:null,x:0,y:0,armado:false,esticou:false};
+  let ultimoToque={i:-1,t:0,x:0,y:0};
   let tocouAgora=0;        /* depois do toque o navegador dispara mouse falso */
   const campoNoPonto=function(x,y){
     const el=document.elementFromPoint(x,y);
@@ -5686,7 +5692,7 @@ function apagarCamposMarcados(){
   };
   const soltarDedo=function(){
     if(dedo.relogio)clearTimeout(dedo.relogio);
-    dedo={relogio:null,x:0,y:0,armado:false};
+    dedo={relogio:null,x:0,y:0,armado:false,esticou:false};
   };
   const abrirTeclado=function(i){
     const alvo=camposDaTabela()[i];
@@ -5702,6 +5708,7 @@ function apagarCamposMarcados(){
     if(selCampos.de!==null){
       /* ja esta marcando: este toque estica a faixa ate aqui */
       selCampos.ate=i; selCampos.arrastando=false;
+      dedo.esticou=true;
       pintarCampos();
       return;
     }
@@ -5729,14 +5736,34 @@ function apagarCamposMarcados(){
     pintarCampos();
   },{passive:false});
   const fimDoDedo=function(e){
-    const marcou=dedo.armado;
+    const marcou=dedo.armado, esticou=dedo.esticou;
     soltarDedo(); tocouAgora=Date.now();
-    if(!marcou)return;
-    selCampos.arrastando=false;
-    const f=faixaDeCampos();
-    if(!f)return;
-    if(e.cancelable)e.preventDefault();
-    abrirTeclado(f[0]);          /* teclado aberto: o apagar dele limpa a faixa */
+    if(marcou){
+      selCampos.arrastando=false;
+      const f=faixaDeCampos();
+      if(!f)return;
+      if(e.cancelable)e.preventDefault();
+      abrirTeclado(f[0]);        /* teclado aberto: o apagar dele limpa a faixa */
+      return;
+    }
+    if(esticou)return;           /* era o toque que fecha a faixa */
+    /* dois toques seguidos no mesmo campo ligam o modo de marcar. E o jeito
+       que nao depende do Safari deixar: o segurar o dedo as vezes ele toma
+       pra ele, o toque nunca.                                              */
+    const t=(e.changedTouches && e.changedTouches[0]) || null;
+    if(!t)return;
+    const i=indiceCampo(campoNoPonto(t.clientX,t.clientY));
+    if(i<0){ ultimoToque={i:-1,t:0,x:0,y:0}; return; }
+    const agora=Date.now();
+    if(ultimoToque.i===i && agora-ultimoToque.t<ESPERA_DOIS &&
+       Math.abs(t.clientX-ultimoToque.x)<FOLGA_DOIS && Math.abs(t.clientY-ultimoToque.y)<FOLGA_DOIS){
+      ultimoToque={i:-1,t:0,x:0,y:0};
+      selCampos={de:i,ate:i,arrastando:false,pendente:null};
+      pintarCampos();            /* o campo acende: agora e so tocar no ultimo */
+      if(navigator.vibrate)try{navigator.vibrate(10)}catch(x){}
+      return;
+    }
+    ultimoToque={i:i,t:agora,x:t.clientX,y:t.clientY};
   };
   tabela.addEventListener('touchend',fimDoDedo,{passive:false});
   /* se o Safari tomar o gesto pra ele, a marcacao continua de pe:
