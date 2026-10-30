@@ -3995,16 +3995,36 @@ async function subpastaDe(raiz,caminho){
   for(const parte of caminho){ dir=await dir.getDirectoryHandle(parte,{create:true}); }
   return dir;
 }
+/* O iCloud (e o OneDrive) troca o arquivo por baixo do navegador enquanto
+   sincroniza. Quando isso acontece no meio de uma gravacao, o Chrome devolve
+   "state had changed since it was read from disk". Nao e erro de verdade: e
+   so o retrato do arquivo que ficou velho.                                  */
+function estadoVelho(e){
+  const txt=((e && e.name)||'')+' '+((e && e.message)||'');
+  return /InvalidStateError|NotReadableError|state had changed|cached in an interface object/i.test(txt);
+}
 async function gravar(dir,nome,conteudo){
-  const fh=await dir.getFileHandle(nome,{create:true});
-  const w=await fh.createWritable();
-  await w.write(conteudo);
-  await w.close();
-  /* confere se chegou inteiro */
-  if(conteudo && typeof conteudo.size==='number'){
-    const escrito=await fh.getFile();
-    if(escrito.size!==conteudo.size){
-      throw new Error('"'+nome+'" foi copiado incompleto ('+escrito.size+' de '+conteudo.size+' bytes). Repita a c\u00f3pia deste item.');
+  for(let tentativa=0;tentativa<2;tentativa++){
+    try{
+      const fh=await dir.getFileHandle(nome,{create:true});
+      const w=await fh.createWritable();
+      await w.write(conteudo);
+      await w.close();
+      /* confere se chegou inteiro. Se a propria conferencia esbarrar no
+         sincronismo, a gravacao ja foi feita \u2014 nao vale derrubar o salvamento
+         por causa da leitura.                                               */
+      if(conteudo && typeof conteudo.size==='number'){
+        try{
+          const escrito=await (await dir.getFileHandle(nome)).getFile();
+          if(escrito.size!==conteudo.size){
+            throw new Error('"'+nome+'" foi copiado incompleto ('+escrito.size+' de '+conteudo.size+' bytes). Repita a c\u00f3pia deste item.');
+          }
+        }catch(e){ if(!estadoVelho(e))throw e; }
+      }
+      return;
+    }catch(e){
+      if(tentativa===0 && estadoVelho(e))continue;   /* o iCloud mexeu: refaz */
+      throw e;
     }
   }
 }
@@ -4477,7 +4497,9 @@ async function salvarTudo(trocarPasta){
     flash('fxSalvoOk');
   }catch(e){
     diz('Salvar');
-    alert('Não deu para salvar: '+(e&&e.message?e.message:e));
+    alert(estadoVelho(e)
+      ? 'O iCloud mexeu nos arquivos da pasta no meio do salvamento. Aperte Salvar de novo.'
+      : 'Não deu para salvar: '+(e&&e.message?e.message:e));
   }finally{
     gerandoPdf=false; if(btn)btn.disabled=false;
   }
@@ -4677,8 +4699,19 @@ async function lerFluxoDoLink(){
 }
 async function abrirArquivoFluxo(arq){
   if(!arq)return;
+  /* ler um arquivo que o iCloud esta sincronizando falha na primeira vez */
+  let texto=null;
+  for(let t=0;t<2;t++){
+    try{ texto=await arq.text(); break; }
+    catch(e){
+      if(t===0 && estadoVelho(e))continue;
+      alert('Não deu para ler este arquivo. Se ele está no iCloud, pode ser que '+
+            'ainda esteja baixando: espere o ícone de nuvem sumir e tente de novo.');
+      return;
+    }
+  }
   try{
-    const pacote=JSON.parse(await arq.text());
+    const pacote=JSON.parse(texto);
     if(!pacote || typeof pacote!=='object')throw new Error('conteúdo inesperado');
     aplicarPacote(pacote);
     flash('fxSalvoOk');
